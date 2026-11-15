@@ -6,7 +6,9 @@ before building anything: it holds the product decisions and the build order.
 ## State of the repo
 
 Build steps 1 and 2 are done (scaffold, content as data, straight drive end
-to end). Waiting on the owner's reaction before step 3.
+to end). The owner's reaction: rework the animations before step 3. That work
+is planned and tracked in `docs/animation/` (start with `HANDOFF.md`); read it
+before touching `src/anim/` or `src/ui/CourtStage.tsx`.
 
 - `npm run dev` / `npm run build` / `npm test`. Vite + React + TypeScript,
   `vite-plugin-pwa`, Dexie, Motion, Vitest. Hash routing, relative base, so
