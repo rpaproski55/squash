@@ -5,12 +5,25 @@ before building anything: it holds the product decisions and the build order.
 
 ## State of the repo
 
-- `index.html` is the original single-file reference page (level cards 2.0 to
-  6.0, tap-to-rate fundamentals, court diagram). It is the source for level
-  content and is to be replaced by the app, not extended.
-- Its known scroll bug is probably the `scrollIntoView` call inside the
-  `IntersectionObserver` near the end of the file, which fights the user's page
-  scroll. Not worth fixing separately; the rebuild removes it.
+Build steps 1 and 2 are done (scaffold, content as data, straight drive end
+to end). Waiting on the owner's reaction before step 3.
+
+- `npm run dev` / `npm run build` / `npm test`. Vite + React + TypeScript,
+  `vite-plugin-pwa`, Dexie, Motion, Vitest. Hash routing, relative base, so
+  `dist/` works on any static host (GitHub Pages included).
+- `src/content/`: levels, foundations, skills and drills as typed data, in our
+  own words with SquashClub.org links. Drill targets are first-draft
+  assumptions.
+- `src/anim/`: the declarative shot format. A scene is 3D ball waypoints
+  (x across, y from the front wall, z height), player keyframes, zones and
+  captions. `trajectory.ts` turns it into positions; `ui/CourtStage.tsx`
+  renders top and side views. A new renderer reads the same scenes.
+- `src/anim/scenes.test.ts` checks scenes are physically plausible and teach
+  the right thing (the good drive lands in the target, the misses do not).
+- `src/data/`: Dexie database and `drillStats.ts` (typical = median of the
+  last 5 sessions, level met, next target, trend), with tests.
+- `docs/reference-ladder.html` is the original single-file page, kept as a
+  reference only.
 
 ## Rules that come from the owner
 
