@@ -5,11 +5,13 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // Relative base so the build works from any folder (GitHub Pages project path,
 // a preview host, or a local file server).
-export default defineConfig({
+// `--mode preview-page` builds a copy without the service worker, for hosts
+// that do not allow one (such as a shared preview page).
+export default defineConfig(({ mode }) => ({
   base: './',
   plugins: [
     react(),
-    VitePWA({
+    mode !== 'preview-page' && VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
       manifest: {
@@ -25,8 +27,9 @@ export default defineConfig({
       workbox: { globPatterns: ['**/*.{js,css,html,svg,woff2}'] },
     }),
   ],
+  define: { __PWA__: JSON.stringify(mode !== 'preview-page') },
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
   },
-})
+}))
