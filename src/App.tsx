@@ -2,6 +2,7 @@ import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 import { useCallback, useState } from 'react'
 import { getDrill } from './content/skills'
 import { useDrillResults } from './data/hooks'
+import { DevSwing } from './screens/DevSwing'
 import { Levels } from './screens/Levels'
 import { Progress } from './screens/Progress'
 import { SkillScreen } from './screens/SkillScreen'
@@ -27,6 +28,7 @@ export function App() {
   const [first = '', second] = route
   let screen
   if (first === 'skill' && second) screen = <SkillScreen id={second} onLog={setLogDrill} />
+  else if (first === 'dev' && second === 'swing') screen = <DevSwing />
   else if (first === 'levels') screen = <Levels />
   else if (first === 'progress') screen = <Progress />
   else screen = <Today onLog={setLogDrill} />
