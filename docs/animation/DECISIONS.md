@@ -65,3 +65,9 @@ Verified, and how:
 - Scene pacing: the feed reaches the racquet in about half a real second. If
   the scenes are ever retimed to real ball speeds, the clip's approach should
   be re-authored with more, shorter steps.
+
+## Owner review of the prototype, 2026-11-17
+
+- Owner: the prototype looks great. Step 0 of `PLAN.md` is approved as is:
+  the swing, the Auto camera sequence and the mannequin's level of detail.
+  The build session can start at Step 1 with no pose changes.
