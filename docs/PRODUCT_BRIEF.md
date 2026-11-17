@@ -169,11 +169,56 @@ Out, for now:
    starting with 3.0 to 4.5, the range around the owner's level.
 6. **Polish.** PWA install, offline, export and import, motion and empty states.
 
-## 10. Open questions
+## 10. Core loop decisions (owner, 2026-11-17)
 
-- Drill targets per level: what counts as "good" at 3.5 versus 4.0?
-- The loss-reason tag list and how many tags it needs.
-- How readiness is calculated, and how much evidence is enough to suggest a
-  level change.
+These settle the open questions for build steps 3 and 4.
+
+**Match log.** Win or loss, game score (one tap, e.g. 3-1), opponent weaker,
+similar or stronger, and up to three loss reasons. Only the result is
+required. Target: about 15 seconds.
+
+**Loss reasons.** Eight fixed reasons, each mapped to the skill it raises on
+the home screen, plus an optional "Other" with free text:
+
+| Reason | Skill it raises |
+|---|---|
+| My length was short or loose | Straight drive |
+| Too many balls in the tin | Consistency and shot choice |
+| Beaten at the front | Front-court movement |
+| Slow back to the T | Movement and the T |
+| They volleyed me from the middle | Width and tightness |
+| Lost points on serve or return | Serve and return |
+| Ran out of energy | Fitness |
+| Went for winners too early | Patience |
+| Other (free text) | None: stored and shown in the match history only |
+
+"Other" counts toward the three-reason limit. It does not affect focus
+selection. If the same free-text reason keeps coming up, that is a signal to
+add it as a ninth fixed reason.
+
+**Drill targets.** Keep the first-draft targets (drive streak: 3.5 = 15 in a
+row). Check them against the owner's first five logged sessions and adjust if
+the owner's typical score is far from the 3.5 target.
+
+**Home screen focus.** One to three items, each with a one-line reason.
+Priority:
+
+1. Loss reasons picked in the last three matches (a reason picked twice puts
+   its skill first).
+2. Drills where the typical score is below the player's level target.
+3. Skills not practised in 14 days.
+
+**Level change.** Deliberately loose for now. The owner is not yet sure the
+feature is useful or what the logic should be, so:
+
+- Build it as a simple, clearly labelled suggestion, never automatic.
+- Starting rule: drill scores meet the next level's targets and the player
+  wins most recent matches against similar opponents.
+- Keep the thresholds in one place so they are easy to change, and do not
+  build heavy machinery around them. Refine after real use.
+
+## 11. Open questions
+
 - Where to host it. GitHub Pages is the assumed default.
 - The app's name.
+- The exact level-change rule, once there is real usage to judge it by.
