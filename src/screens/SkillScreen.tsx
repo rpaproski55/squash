@@ -34,9 +34,7 @@ export function SkillScreen({ id, onLog }: { id: string; onLog: (drillId: string
 
       <div className="screen stack" style={{ gap: 24 }}>
         <div ref={stageRef} className="card flush" style={{ scrollMarginTop: 64 }}>
-          <div style={{ padding: '0 16px' }}>
-            <CourtStage setId={skill.sceneId} variant={variant} onVariant={setVariant} showVariants onCue={onCue} />
-          </div>
+          <CourtStage setId={skill.sceneId} variant={variant} onVariant={setVariant} showVariants onCue={onCue} />
         </div>
 
         <header className="stack" style={{ gap: 6 }}>

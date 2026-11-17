@@ -120,3 +120,28 @@ Verified, and how:
   `quarterWide` and enters the picture at tau -0.55. Prototype wins.
 - The old SVG stage stays on the skill page until Step 4; it now places
   "you" by the solved pelvis.
+
+## Build session, Step 4, 2026-11-17
+
+- `CourtStage.tsx` is now a shell around the canvas renderer: Auto / Swing /
+  Behind / Above, caption strip under the stage, play, scrubber, half speed,
+  variant chips, loop fade. Per frame it only draws; React state changes for
+  the caption, play state, view and variant. The scrubber is moved by a ref.
+- The first build's SVG stage is now `LegacyCourtStage.tsx` and is used only
+  for scenes without a figure (the drill) until Step 6. Deleted in Step 8.
+- Loop length: 7.98 s to the end of the scene ("8.0 s per loop" in
+  DIRECTION.md), 8.48 s for the full cycle including the 0.5 s rest before the
+  restart. Measured the same way on the prototype: identical.
+- The stage fills the card edge to edge: 356 x 398 at 390 px (the card's 1 px
+  border takes the 2 px off DIRECTION's 358 x 400). The stage is the same size
+  in every view and variant (checked by clicking through all of them).
+- Reduced motion, per DIRECTION.md where the prototype is silent: opens on the
+  contact pose in the Swing view, nothing moves until play; then it plays once
+  and stops on the last frame, with camera moves as cuts, no loop fade, and
+  marks without the ring or pop.
+- Verified on the built app at 390 px: canvas bitmaps of the skill page
+  against the prototype, 4 variants x Auto and Swing x 9 times x 2 themes. 130
+  of 144 are pixel-identical, including both camera moves. The rest are the
+  Step 5 highlights and one first-frame capture race on the prototype side.
+  Cue highlighting still follows the caption. No console errors, no
+  horizontal scroll.
