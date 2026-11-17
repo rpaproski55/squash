@@ -36,7 +36,10 @@ export interface Player {
   id: string
   role: 'you' | 'opponent'
   label: string
-  keys: PlayerKey[]
+  /** Players with motion get a full figure. */
+  motion?: ClipPlacement[]
+  /** Kept for players without a clip (the drill, an opponent drawn as a marker). */
+  keys?: PlayerKey[]
 }
 
 export type Zone =
@@ -49,6 +52,8 @@ export interface Caption {
   /** Index into the skill's cue list, so the page can highlight it. */
   cue?: number
   tone?: 'good' | 'bad'
+  /** On-court highlight shown with this caption. */
+  mark?: 'racquet' | 'foot' | 'contact'
 }
 
 export interface Scene {

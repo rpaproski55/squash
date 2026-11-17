@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { CAMERAS, makeProjector, STAGE } from './camera'
 import { FOREHAND_DRIVE } from './figure/clips'
+import { figureAt } from './figure/figureAt'
 import { footAt, placeFigure, solveFigure } from './figure/solve'
-import { STRAIGHT_DRIVE } from './scenes/straightDrive'
+import { DEFAULT_DIRECTOR, directedCamera, paceAt } from './director'
+import { SCENE_SETS } from './scenes'
+import { ballAt } from './trajectory'
 import { sampleTrack } from './tracks'
 import type { FigurePose, Vec3 } from './types'
 import { RAD, V } from './vec'
@@ -17,8 +20,8 @@ const range = (a: number, b: number, step: number) => {
   return out
 }
 
-/** Every strike in the straight drive set (the anchor is the floor point under it). */
-const strikes = STRAIGHT_DRIVE.variants.map((s) => s.ball.find((p) => p.event === 'strike')!)
+const scenes = Object.values(SCENE_SETS).flatMap((s) => s.variants)
+const placements = scenes.flatMap((scene) => scene.players.flatMap((pl) => (pl.motion ?? []).map((m) => ({ scene, pl, m }))))
 
 describe('figure: the solved poses match the prototype (POSES.md table)', () => {
   // t, pelvis, chest, head, racquet hand, racquet head, L ankle, R ankle, wrist angle, elbow angle
@@ -51,10 +54,12 @@ describe('figure: the solved poses match the prototype (POSES.md table)', () => 
 })
 
 describe('figure: the swing is physically right', () => {
-  it('1. the racquet head meets the ball at contact', () => {
-    for (const s of strikes) {
-      const f = placeFigure(solveFigure(clip, 0), { x: s.x, y: s.y })
-      expect(V.len(V.sub(f.racquet.head, [s.x, s.y, s.z]))).toBeLessThan(0.03)
+  it('1. the racquet head meets the ball at contact, in every placement of every scene', () => {
+    expect(placements.length).toBeGreaterThanOrEqual(4)
+    for (const { scene, pl, m } of placements) {
+      const b = ballAt(scene.ball, m.at, scene.gravity)!
+      const f = figureAt(pl, m.at)!
+      expect(V.len(V.sub(f.racquet.head, [b.x, b.y, b.z]))).toBeLessThan(0.03)
     }
   })
 
@@ -146,5 +151,36 @@ describe('cameras', () => {
     // The racquet arm is on the player's right: in the behind view, the right shoulder is right of the left one.
     const f = at(-2)
     expect(behind.project(f.shoulderR).x).toBeGreaterThan(behind.project(f.shoulderL).x)
+  })
+})
+
+describe('the directed sequence', () => {
+  it('10. keeps the player and the ball in frame', () => {
+    const inside = (p: { x: number; y: number }) => p.x >= 0 && p.x <= STAGE.w && p.y >= 0 && p.y <= STAGE.h
+    const moving = (tau: number) => DEFAULT_DIRECTOR.camera.some((k, i) => k.ease === 'move' && tau > DEFAULT_DIRECTOR.camera[i - 1].t && tau < k.t)
+    for (const scene of scenes.filter((s) => s.players.some((p) => p.motion))) {
+      const strike = scene.ball.find((p) => p.event === 'strike')!.t
+      for (let i = 0; i < 20; i++) {
+        const t = (scene.duration * i) / 19
+        const tau = t - strike
+        const P = makeProjector(directedCamera(DEFAULT_DIRECTOR, tau), STAGE.w, STAGE.h)
+        const fig = figureAt(scene.players[0], t)!
+        expect(inside(P.project(fig.pelvis)), `${scene.id} pelvis at ${t.toFixed(2)}`).toBe(true)
+        const b = ballAt(scene.ball, t, scene.gravity)
+        // The feed comes in from off the right edge of the prototype's framing and enters at tau -0.55,
+        // so the ball is required from tau -0.5: the approach to contact and the whole shot (DECISIONS.md).
+        if (b && !moving(tau) && tau >= -0.5) expect(inside(P.project([b.x, b.y, b.z])), `${scene.id} ball at ${t.toFixed(2)}`).toBe(true)
+      }
+    }
+  })
+
+  it('11. pace stays between 0.05 and 1', () => {
+    for (const tau of range(-3, 4, 0.01)) {
+      for (const mode of ['auto', 'top'] as const) {
+        const p = paceAt(DEFAULT_DIRECTOR, tau, mode)
+        expect(p).toBeGreaterThanOrEqual(0.05)
+        expect(p).toBeLessThanOrEqual(1)
+      }
+    }
   })
 })

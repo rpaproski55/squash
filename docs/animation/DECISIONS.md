@@ -100,3 +100,23 @@ Verified, and how:
   the only differing pixels are the floor target, contact guide and ball
   trail, which arrive in Steps 2 and 5. Sheets in `build/step1-*.png`. 61 fps
   in headless Chromium, no horizontal scroll at 390 px.
+
+## Build session, Steps 2 and 3, 2026-11-17
+
+- Steps 2 and 3 checked together against the prototype, because the
+  prototype's scenes already carry the 0.8 s lead-in: canvas bitmaps of all
+  4 variants x 4 cameras x 6 times x 2 themes (192 frames). 173 are
+  pixel-identical. The other 19 differ only in the racquet ring and contact
+  line, which are Step 5 highlights (the prototype draws them already).
+- `Scene` gains `tone` (colour of the dotted path) and `director`;
+  `Caption` gains `mark`; `Player.keys` is optional and `Player.motion` added.
+  The drill keeps its `keys` until Step 6.
+- `figureAt(player, t)` plays the nearest placement; blending between
+  placements comes with the drill in Step 6.
+- `director.ts` is added in Step 3, one step early, because test 10 needs
+  the directed camera.
+- Test 10 (framing) requires the ball in frame only from tau -0.5. In the
+  approved framing the opponent's feed comes in from off the right edge of
+  `quarterWide` and enters the picture at tau -0.55. Prototype wins.
+- The old SVG stage stays on the skill page until Step 4; it now places
+  "you" by the solved pelvis.

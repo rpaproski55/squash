@@ -1,6 +1,7 @@
 import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { COURT, RACQUET, T_POINT, sideOutAt } from '../anim/court'
+import { figureAt } from '../anim/figure/figureAt'
 import { getSceneSet } from '../anim/scenes'
 import { ballAt, captionAt, counterAt, playerAt, samplePath, swingAt, type BallPos as Vec3 } from '../anim/trajectory'
 import type { BallPoint, Scene } from '../anim/types'
@@ -113,7 +114,12 @@ function useFrame(scene: Scene, t: number): Frame {
     marks: passed.filter((p) => p.mark),
     bounces: passed.filter((p) => p.event === 'bounce' && !p.mark),
     frontHits: passed.filter((p) => p.event === 'front' && !p.mark),
-    players: scene.players.map((pl) => ({ id: pl.id, role: pl.role, label: pl.label, ...playerAt(pl.keys, t), swing: swingAt(pl.keys, t) })),
+    players: scene.players.map((pl) => {
+      // Players with motion are placed by their solved pelvis (one source of truth).
+      const fig = figureAt(pl, t)
+      const pos = fig ? { x: fig.pelvis[0], y: fig.pelvis[1] } : playerAt(pl.keys ?? [], t)
+      return { id: pl.id, role: pl.role, label: pl.label, ...pos, swing: pl.keys ? swingAt(pl.keys, t) : null }
+    }),
     zonePulse: passed.some((p) => p.mark === 'good' && p.event === 'bounce' && t - p.t < 0.6),
   }
 }
