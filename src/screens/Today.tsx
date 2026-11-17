@@ -1,21 +1,25 @@
-import { getDrill, getSkill } from '../content/skills'
-import { summarise } from '../data/drillStats'
-import { useDrillResults, usePlayerLevel } from '../data/hooks'
-import { href } from '../ui/router'
+import { motion } from 'motion/react'
+import { DRILLS, getSkill } from '../content/skills'
+import { focusList, type FocusItem } from '../data/focus'
+import { summarise, type SideSummary } from '../data/drillStats'
+import { useAllDrillResults, useMatches, usePlayerLevel } from '../data/hooks'
+import type { DrillResult } from '../data/db'
+import type { LevelId } from '../content/types'
+import type { LogMode } from '../ui/LogSheet'
 import { CourtStage } from '../ui/CourtStage'
 import { Icon } from '../ui/Icon'
+import { href } from '../ui/router'
 
-export function Today({ onLog }: { onLog: (drillId: string) => void }) {
-  const skill = getSkill('straight-drive')!
-  const drill = getDrill('drive-streak')!
-  const results = useDrillResults(drill.id)
+/*
+ * The home screen answers "what do I work on today?": one to three focus
+ * items, each with a one-line reason (data/focus.ts), and logging one tap away.
+ */
+export function Today({ onLog, onLogSession }: { onLog: (drillId: string) => void; onLogSession: (mode: LogMode) => void }) {
+  const results = useAllDrillResults()
+  const matches = useMatches()
   const [level] = usePlayerLevel()
-  const fh = summarise(drill, results, 'forehand', level)
-  const bh = summarise(drill, results, 'backhand', level)
+  const items = focusList({ matches, results, level, now: Date.now() })
   const today = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
-
-  const line = (label: string, s: typeof fh) =>
-    s.typical === null ? `${label}: no score yet` : `${label}: typical ${s.typical}${s.next ? ` · target ${s.next.target}` : ''}`
 
   return (
     <div className="screen stack" style={{ paddingTop: 20, gap: 20 }}>
@@ -24,34 +28,26 @@ export function Today({ onLog }: { onLog: (drillId: string) => void }) {
         <h1 className="title-xl">What to work on today</h1>
       </header>
 
-      <article className="card flush">
-        <a href={href('skill', skill.id)} style={{ textDecoration: 'none', display: 'block' }} aria-label={`Open ${skill.name}`}>
-          <CourtStage setId={skill.sceneId} compact />
-        </a>
-        <div className="stack" style={{ padding: 18, gap: 12 }}>
-          <div className="row">
-            <span className="eyebrow" style={{ color: 'var(--accent)' }}>Focus 1</span>
-            <span className="spacer" />
-            <span className="tag">From {skill.fromLevel}</span>
-          </div>
-          <div>
-            <h2 className="title-l">{skill.name}</h2>
-            <p className="muted" style={{ marginTop: 4 }}>{skill.tagline}</p>
-          </div>
-          <div className="small muted" style={{ display: 'grid', gap: 2 }}>
-            <span>{line('Forehand', fh)}</span>
-            <span>{line('Backhand', bh)}</span>
-          </div>
-          <div className="row" style={{ gap: 10 }}>
-            <a className="btn btn-ghost" href={href('skill', skill.id)} style={{ flex: 1, textDecoration: 'none' }}>
-              Learn it
-            </a>
-            <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => onLog(drill.id)}>
-              <Icon name="plus" size={20} /> Log score
-            </button>
-          </div>
+      {items.map((item, i) => (
+        <motion.div key={item.area.id} layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, delay: i * 0.05 }}>
+          <FocusCard item={item} n={i + 1} hero={i === 0} results={results} level={level} onLog={onLog} />
+        </motion.div>
+      ))}
+
+      <section className="card stack" style={{ gap: 12 }}>
+        <div>
+          <b>Played today?</b>
+          <p className="faint">Log it in under a minute. It shapes this list.</p>
         </div>
-      </article>
+        <div className="row" style={{ gap: 10 }}>
+          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => onLogSession('drill')}>
+            <Icon name="plus" size={20} /> Drill score
+          </button>
+          <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => onLogSession('match')}>
+            <Icon name="plus" size={20} /> Match
+          </button>
+        </div>
+      </section>
 
       {!level && (
         <a className="card row" href={href('levels')} style={{ textDecoration: 'none' }}>
@@ -62,10 +58,58 @@ export function Today({ onLog }: { onLog: (drillId: string) => void }) {
           <Icon name="chevron" />
         </a>
       )}
-
-      <p className="faint" style={{ textAlign: 'center', padding: '0 12px' }}>
-        More focus items, and match logging, come next. They will be picked from what you log.
-      </p>
     </div>
+  )
+}
+
+function FocusCard({ item, n, hero, results, level, onLog }: {
+  item: FocusItem
+  n: number
+  hero: boolean
+  results: DrillResult[]
+  level: LevelId | null
+  onLog: (drillId: string) => void
+}) {
+  const skill = item.area.skillId ? getSkill(item.area.skillId) : undefined
+  const drill = skill ? DRILLS.find((d) => d.skillId === skill.id) : undefined
+  const line = (s: SideSummary) =>
+    `${s.side === 'forehand' ? 'Forehand' : 'Backhand'}: ${s.typical === null ? 'no score yet' : `typical ${s.typical}${s.next ? ` · target ${s.next.target}` : ''}`}`
+
+  return (
+    <article className={`card ${hero && skill ? 'flush' : ''} focus-card`}>
+      {hero && skill && (
+        <a href={href('skill', skill.id)} style={{ textDecoration: 'none', display: 'block' }} aria-label={`Open ${skill.name}`}>
+          <CourtStage setId={skill.sceneId} compact />
+        </a>
+      )}
+      <div className="stack" style={{ padding: hero && skill ? 18 : 0, gap: 12 }}>
+        <div className="row">
+          <span className="eyebrow" style={{ color: 'var(--accent)' }}>Focus {n}</span>
+          <span className="spacer" />
+          {skill && <span className="tag">From {skill.fromLevel}</span>}
+        </div>
+        <div>
+          <h2 className={hero ? 'title-l' : 'title-m'}>{item.area.name}</h2>
+          <p className="focus-reason">{item.reason}</p>
+        </div>
+        {skill && drill ? (
+          <>
+            {hero && (
+              <div className="small muted" style={{ display: 'grid', gap: 2 }}>
+                {drill.sides.map((side) => <span key={side}>{line(summarise(drill, results, side, level))}</span>)}
+              </div>
+            )}
+            <div className="row" style={{ gap: 10 }}>
+              <a className="btn btn-ghost" href={href('skill', skill.id)} style={{ flex: 1, textDecoration: 'none' }}>Learn it</a>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => onLog(drill.id)}>
+                <Icon name="plus" size={20} /> Log score
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className="muted small">{item.area.tip}</p>
+        )}
+      </div>
+    </article>
   )
 }

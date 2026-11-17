@@ -8,7 +8,7 @@ import { Progress } from './screens/Progress'
 import { SkillScreen } from './screens/SkillScreen'
 import { Today } from './screens/Today'
 import { Icon } from './ui/Icon'
-import { LogSheet, Toast } from './ui/LogSheet'
+import { LogSheet, Toast, type LogMode } from './ui/LogSheet'
 import { href, useRoute } from './ui/router'
 
 const TABS = [
@@ -19,7 +19,10 @@ const TABS = [
 
 export function App() {
   const route = useRoute()
-  const [logDrill, setLogDrill] = useState<string | null>(null)
+  const [log, setLog] = useState<{ mode: LogMode; drillId: string } | null>(null)
+  const logDrill = log?.drillId ?? null
+  const setLogDrill = (drillId: string) => setLog({ mode: 'drill', drillId })
+  const logSession = (mode: LogMode) => setLog({ mode, drillId: 'drive-streak' })
   const [toast, setToast] = useState<{ message: string; celebrate: boolean } | null>(null)
   const drill = getDrill(logDrill ?? 'drive-streak')!
   const results = useDrillResults(drill.id)
@@ -31,7 +34,7 @@ export function App() {
   else if (first === 'dev' && second === 'swing') screen = <DevSwing />
   else if (first === 'levels') screen = <Levels />
   else if (first === 'progress') screen = <Progress />
-  else screen = <Today onLog={setLogDrill} />
+  else screen = <Today onLog={setLogDrill} onLogSession={logSession} />
 
   const activeTab = first === 'skill' ? '' : first
 
@@ -65,8 +68,10 @@ export function App() {
       <LogSheet
         drill={drill}
         results={results}
-        open={logDrill !== null}
-        onClose={() => setLogDrill(null)}
+        open={log !== null}
+        mode={log?.mode ?? 'drill'}
+        onMode={(mode) => setLog((l) => (l ? { ...l, mode } : l))}
+        onClose={() => setLog(null)}
         onSaved={(message, celebrate) => setToast({ message, celebrate })}
       />
       <Toast message={toast?.message ?? null} celebrate={toast?.celebrate ?? false} onDone={clearToast} />

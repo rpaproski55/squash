@@ -3,18 +3,25 @@ import { useEffect, useState } from 'react'
 import type { Drill, Side } from '../content/types'
 import { logDrillScores, type DrillResult } from '../data/db'
 import { personalBest, seriesFor } from '../data/drillStats'
+import { Segmented } from './CourtStage'
 import { Icon } from './Icon'
+import { MatchForm } from './MatchForm'
+
+export type LogMode = 'drill' | 'match'
 
 const SIDE_LABEL: Record<Side, string> = { forehand: 'Forehand', backhand: 'Backhand' }
 
 /**
- * Logging must take well under a minute: one number per side, nothing else.
- * A side left empty is simply not saved.
+ * Logging a session must take well under a minute. A drill is one number per
+ * side (a side left empty is not saved); a match is the result plus optional
+ * details (MatchForm).
  */
-export function LogSheet({ drill, results, open, onClose, onSaved }: {
+export function LogSheet({ drill, results, open, mode, onMode, onClose, onSaved }: {
   drill: Drill
   results: DrillResult[]
   open: boolean
+  mode: LogMode
+  onMode: (m: LogMode) => void
   onClose: () => void
   onSaved: (message: string, celebrate: boolean) => void
 }) {
@@ -53,10 +60,16 @@ export function LogSheet({ drill, results, open, onClose, onSaved }: {
           >
             <div className="grabber" />
             <div className="stack" style={{ gap: 14 }}>
-              <div>
-                <h2 id="log-title" className="title-l">Log {drill.name.toLowerCase()}</h2>
-                <p className="faint">{drill.scoring}. Fill one side or both.</p>
+              <div className="row">
+                <h2 id="log-title" className="title-l" style={{ flex: 1 }}>Log a session</h2>
+                <Segmented id="log-mode" value={mode} onChange={(v) => onMode(v as LogMode)}
+                  options={[{ value: 'drill', label: 'Drill' }, { value: 'match', label: 'Match' }]} />
               </div>
+              {mode === 'match' ? (
+                <MatchForm key={String(open)} onSaved={(m) => { onClose(); onSaved(m, false) }} />
+              ) : (
+              <>
+              <p className="faint">{drill.name}: {drill.scoring.toLowerCase()}. Fill one side or both.</p>
               <div className="steppers">
                 {drill.sides.map((side) => {
                   const last = seriesFor(results, drill.id, side).at(-1)?.score
@@ -83,6 +96,8 @@ export function LogSheet({ drill, results, open, onClose, onSaved }: {
               <button className="btn btn-primary btn-block" disabled={!filled.length} onClick={save}>
                 Save {filled.length === 2 ? 'both' : ''}
               </button>
+              </>
+              )}
             </div>
           </motion.div>
         </>

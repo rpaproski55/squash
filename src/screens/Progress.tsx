@@ -1,5 +1,6 @@
 import { DRILLS } from '../content/skills'
-import { useDrillResults, usePlayerLevel } from '../data/hooks'
+import { useDrillResults, useMatches, usePlayerLevel } from '../data/hooks'
+import { MatchHistory } from '../ui/MatchHistory'
 import { DrillProgress } from '../ui/DrillProgress'
 import { Segmented } from '../ui/CourtStage'
 import { useTheme } from '../ui/theme'
@@ -27,6 +28,7 @@ function DrillCard({ drill }: { drill: Drill }) {
 export function Progress() {
   const [level] = usePlayerLevel()
   const [theme, setTheme] = useTheme()
+  const matches = useMatches()
   return (
     <div className="screen stack" style={{ paddingTop: 20, gap: 20 }}>
       <header className="stack" style={{ gap: 4 }}>
@@ -34,6 +36,11 @@ export function Progress() {
         <h1 className="title-xl">Progress</h1>
       </header>
       {DRILLS.map((d) => <DrillCard key={d.id} drill={d} />)}
+
+      <section className="card stack" style={{ gap: 10 }}>
+        <h2 className="title-m">Matches</h2>
+        <MatchHistory matches={matches} />
+      </section>
 
       <section className="card stack" style={{ gap: 12 }}>
         <a className="row" href={href('levels')} style={{ textDecoration: 'none' }}>

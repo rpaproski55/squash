@@ -11,6 +11,11 @@ to end). The animation rework that the owner asked for before step 3 is done:
 Read `src/anim/README.md` before touching `src/anim/` or
 `src/ui/CourtStage.tsx`.
 
+Build step 3 (core loop) is done: the home focus list (`src/data/focus.ts`,
+rules from the brief's section 10) and session logging for drills and
+matches. Build step 4 (progress: trends, level-change suggestion) is next.
+Choices are logged in `docs/core-loop/DECISIONS.md`.
+
 - `npm run dev` / `npm run build` / `npm test`. Vite + React + TypeScript,
   `vite-plugin-pwa`, Dexie, Motion, Vitest. Hash routing, relative base, so
   `dist/` works on any static host (GitHub Pages included).
