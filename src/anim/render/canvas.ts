@@ -1,6 +1,6 @@
 import { isTopDown, makeProjector, type Projected, type Projector } from '../camera'
 import { COURT } from '../court'
-import { ballAt } from '../trajectory'
+import { ballAt, captionAt } from '../trajectory'
 import { BODY, LIMB_R } from '../figure/body'
 import type { FigurePose, Racquet, Scene, Vec3 } from '../types'
 import { V } from '../vec'
@@ -56,6 +56,7 @@ export class CanvasStageRenderer implements StageRenderer {
     const strike = sc ? strikeTime(sc) : 0
     const ball = sc ? toV(ballAt(sc.ball, f.t, sc.gravity)) : (f.ball ?? null)
     if (sc && ball) this.drawShotPathAndShadows(sc, f.t, strike, ball)
+    if (sc && f.figures[0]) this.drawHighlights(sc, f.t, f.figures[0], !!f.reduced)
     // ball in front of or behind the figure, by camera depth
     const pelvisDepth = f.figures[0] ? this.P.toCam(f.figures[0].pelvis)[2] : Infinity
     const ballBehind = !!ball && this.P.toCam(ball)[2] > pelvisDepth
@@ -433,6 +434,47 @@ export class CanvasStageRenderer implements StageRenderer {
     ctx.lineWidth = 1.2
     ctx.strokeStyle = c['ball-edge']
     ctx.stroke()
+  }
+
+  /* ---------- teaching highlights: one on-court mark per caption that names one ---------- */
+  private drawHighlights(scene: Scene, t: number, f: FigurePose, reduced: boolean) {
+    const { ctx, c } = this
+    const cur = captionAt(scene, t)
+    if (!cur?.mark) return
+    const age = t - cur.t
+    ctx.globalAlpha = reduced ? 1 : Math.min(1, age / 0.08)
+    if (cur.mark === 'racquet') {
+      // dashed ring around the racquet head (it breathes, except under reduced motion)
+      const q = this.pj(f.racquet.head)
+      ctx.beginPath()
+      ctx.arc(q.x, q.y, 0.2 * q.scale + (reduced ? 0 : 3 * Math.sin(age * 10)), 0, 7)
+      ctx.strokeStyle = c.accent
+      ctx.lineWidth = 2
+      ctx.setLineDash([4, 5])
+      ctx.stroke()
+      ctx.setLineDash([])
+    }
+    if (cur.mark === 'foot') {
+      // arrow on the floor from the front foot toward the side wall
+      const toe = f.legL.toe
+      const d = V.norm([toe[0] - f.legL.heel[0], toe[1] - f.legL.heel[1], 0])
+      const a0: Vec3 = [toe[0] + d[0] * 0.08, toe[1] + d[1] * 0.08, 0.004]
+      const a1 = V.add(a0, V.mul(d, 0.42))
+      const n: Vec3 = [-d[1], d[0], 0]
+      this.line3(a0, a1, c.accent, 3)
+      this.line3(a1, V.add(V.sub(a1, V.mul(d, 0.13)), V.mul(n, 0.09)), c.accent, 3)
+      this.line3(a1, V.sub(V.sub(a1, V.mul(d, 0.13)), V.mul(n, 0.09)), c.accent, 3)
+    }
+    if (cur.mark === 'contact') {
+      // line across the floor: front foot and ball level with each other, and a drop line from the ball
+      const anchor = scene.players.find((p) => p.motion?.length)?.motion?.[0].anchor
+      if (anchor) {
+        const y = f.legL.ankle[1]
+        this.line3([f.legL.ankle[0] - 0.25, y, 0.004], [anchor.x + 0.3, y, 0.004], c.accent, 2, [5, 5])
+        this.line3([anchor.x, anchor.y, 0.004], [anchor.x, anchor.y, 0.5], c.accent, 1.5, [3, 4])
+      }
+    }
+    ctx.globalAlpha = 1
   }
 
   /* ---------- marks: ring and check or cross badge at a marked wall hit or bounce ---------- */

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { BOX_BACK, COURT, RACQUET } from './court'
 import { SCENE_SETS } from './scenes'
-import { STRAIGHT_DRIVE } from './scenes/straightDrive'
+import { STRAIGHT_DRIVE, STRIKE } from './scenes/straightDrive'
 import { ballAt, samplePath } from './trajectory'
 import type { Scene } from './types'
 
@@ -87,5 +87,16 @@ describe('the drill counter matches the bounces', () => {
       expect(inFloorTarget(b)).toBe(b.mark === 'good')
       if (b.mark === 'bad') expect(counts[i].value).toBe(0)
     })
+  })
+})
+
+describe('teaching moments (DIRECTION.md table)', () => {
+  it('the good drive marks the racquet, the front foot and the contact at their times', () => {
+    const good = STRAIGHT_DRIVE.variants[0]
+    const marks = good.captions.filter((c) => c.mark).map((c) => [c.mark, +(c.t - STRIKE).toFixed(2)])
+    expect(marks).toEqual([['racquet', -1.45], ['foot', -0.62], ['contact', -0.03]])
+  })
+  it('misses show no body highlight until their swing shows the fault (PLAN.md step 7)', () => {
+    for (const v of STRAIGHT_DRIVE.variants.slice(1)) expect(v.captions.some((c) => c.mark)).toBe(false)
   })
 })

@@ -145,3 +145,20 @@ Verified, and how:
   Step 5 highlights and one first-frame capture race on the prototype side.
   Cue highlighting still follows the caption. No console errors, no
   horizontal scroll.
+
+## Build session, Step 5, 2026-11-17
+
+- Ported the prototype's teaching highlights: dashed ring round the racquet
+  head ("Racquet up early"), floor arrow from the front toe ("Side-on, front
+  foot to the wall"), contact line and drop line ("Contact level with the
+  front foot"). Zone pulses and cue linking were already in from Steps 2 and 4.
+- The contact line uses the scene's clip anchor instead of the prototype's
+  global `ANCHOR` (same point, 5.6, 8.4).
+- Under reduced motion the racquet ring does not breathe and highlights
+  appear without the 0.08 s fade-in. The prototype is silent on this; it
+  follows DIRECTION.md's reduced-motion rule for marks.
+- Verified: skill page against the prototype, 4 variants x Auto and Swing x
+  11 times (including each highlight) x 2 themes, 176 of 176 frames
+  pixel-identical. Settling both pages before the first capture removed the
+  first-frame race seen in Steps 2 to 4. Captions and marks tested in
+  `scenes.test.ts`.
