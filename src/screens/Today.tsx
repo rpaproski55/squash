@@ -2,7 +2,7 @@ import { motion } from 'motion/react'
 import { DRILLS, getSkill } from '../content/skills'
 import { focusList, type FocusItem } from '../data/focus'
 import { summarise, type SideSummary } from '../data/drillStats'
-import { useAllDrillResults, useMatches, usePlayerLevel } from '../data/hooks'
+import { useAllDrillResults, useLevelSuggestion, useMatches, usePlayerLevel } from '../data/hooks'
 import type { DrillResult } from '../data/db'
 import type { LevelId } from '../content/types'
 import type { LogMode } from '../ui/LogSheet'
@@ -19,6 +19,7 @@ export function Today({ onLog, onLogSession }: { onLog: (drillId: string) => voi
   const matches = useMatches()
   const [level] = usePlayerLevel()
   const items = focusList({ matches, results, level, now: Date.now() })
+  const { suggestion } = useLevelSuggestion()
   const today = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
 
   return (
@@ -49,7 +50,18 @@ export function Today({ onLog, onLogSession }: { onLog: (drillId: string) => voi
         </div>
       </section>
 
-      {!level && (
+      {suggestion && (
+        <a className="card row suggestion" href={href('progress')} style={{ textDecoration: 'none' }}>
+          <div style={{ flex: 1 }}>
+            <span className="eyebrow" style={{ color: 'var(--accent)' }}>Level suggestion</span>
+            <b style={{ display: 'block' }}>{suggestion.kind === 'start' ? `Your scores match ${suggestion.to}` : suggestion.kind === 'up' ? `Ready for ${suggestion.to}?` : `Try ${suggestion.to} for a while?`}</b>
+            <p className="faint">See why on Progress.</p>
+          </div>
+          <Icon name="chevron" />
+        </a>
+      )}
+
+      {!level && !suggestion && (
         <a className="card row" href={href('levels')} style={{ textDecoration: 'none' }}>
           <div style={{ flex: 1 }}>
             <b>Pick your level, if you like</b>

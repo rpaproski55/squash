@@ -40,3 +40,31 @@ the choices made along the way. Screenshots of each step sit next to it.
   at the front" put front-court movement first ("in both your last two
   matches"); the fourth reason locks at three; "Other: Bad shoes" shows in
   match history only. No console errors, no horizontal scroll.
+
+## Build step 4: progress and the level-change suggestion, 2026-11-17
+
+- **Level-change suggestion** (`src/data/levelSuggestion.ts`, every threshold
+  in `LEVEL_RULES`). Always a labelled suggestion with its evidence, never
+  automatic; "Not now" hides the same suggestion for 14 days.
+  - Up: every side with at least 3 sessions has a typical score at the next
+    level's target, and more than half of the last 5 matches against
+    similar opponents were won (at least 3 such matches needed).
+  - Down: the mirror image, against the level below's target and losses.
+    **Choice:** the brief's starting rule only describes moving up; the brief
+    also says the app can suggest moving down, so this is the same rule
+    turned round.
+  - No level chosen: offer the highest level whose drill targets the scores
+    meet ("Your scores match 3.5"). Matches are not needed for this one,
+    because "similar opponent" has no meaning without a level. **Choice**,
+    not in the brief.
+- **Per-skill trends.** Drill trends were already on Progress (typical, best,
+  chart, trend arrow). Matches add a record (last 5 and all time) and "Where
+  you lose points": each loss reason's count in the last 5 matches against
+  the 5 before, with a green "down from" or red "up from". Window size in
+  `MATCH_WINDOW` (`src/data/matchStats.ts`).
+- The suggestion shows on Progress; Today shows a small pointer card to it.
+- Checked at 390 px, light and dark, with a seeded history (level 3.5,
+  drive streak at the 4.0 target, 4 of the last 5 similar matches won):
+  "Ready for 4.0?" appears with both pieces of evidence; "Move to 4.0" sets
+  the level and the card goes; "Not now" keeps it hidden after a reload. No
+  console errors, no horizontal scroll.

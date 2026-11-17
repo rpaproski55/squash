@@ -11,9 +11,11 @@ to end). The animation rework that the owner asked for before step 3 is done:
 Read `src/anim/README.md` before touching `src/anim/` or
 `src/ui/CourtStage.tsx`.
 
-Build step 3 (core loop) is done: the home focus list (`src/data/focus.ts`,
-rules from the brief's section 10) and session logging for drills and
-matches. Build step 4 (progress: trends, level-change suggestion) is next.
+Build steps 3 and 4 are done: the home focus list (`src/data/focus.ts`,
+rules from the brief's section 10), session logging for drills and matches,
+match trends (`src/data/matchStats.ts`) and the level-change suggestion
+(`src/data/levelSuggestion.ts`, thresholds in `LEVEL_RULES`). Next in the
+brief: step 5, breadth.
 Choices are logged in `docs/core-loop/DECISIONS.md`.
 
 - `npm run dev` / `npm run build` / `npm test`. Vite + React + TypeScript,
