@@ -70,3 +70,99 @@ export interface SceneSet {
   /** Variants, the first is the default ("the good version"). */
   variants: Scene[]
 }
+
+/* ---------------------------------------------------------------------------
+ * Figure, cameras and direction (docs/animation/ARCHITECTURE.md).
+ * Ported from the core block of docs/animation/prototypes/straight-drive.html.
+ * ------------------------------------------------------------------------- */
+
+export type Vec2 = [number, number]
+export type Vec3 = [number, number, number]
+
+/** [time, value] or [time, value, 'peak']. 'peak' is only read by arc tracks. */
+export type Key<T> = [t: number, value: T] | [t: number, value: T, tag: 'peak']
+export type Track<T> = Key<T>[]
+
+export interface FigureTracks {
+  /** Added to the midpoint of the two feet to give the pelvis floor position. */
+  pelvisOffset: Track<Vec2>
+  pelvisHeight: Track<number>
+  hipYaw: Track<number>
+  chestYaw: Track<number>
+  /** Forward lean of the spine along chestYaw, degrees. */
+  lean: Track<number>
+  /** Ankle positions on the floor in the clip frame. Lift is automatic. */
+  footL: Track<Vec2>
+  footR: Track<Vec2>
+  toeL: Track<number>
+  toeR: Track<number>
+  /** Racquet-hand wrist, chest frame. 'R' means the racquet side of a right-hander. */
+  handR: Track<Vec3>
+  handL: Track<Vec3>
+  /** Wrist to racquet head, chest frame. Arc track. */
+  racquetDir: Track<Vec3>
+  /** Normal of the strings, chest frame. Arc track. */
+  racquetFace: Track<Vec3>
+  /** Direction the racquet elbow bends toward, chest frame. Arc track. */
+  elbowR: Track<Vec3>
+}
+
+export interface FigureClip {
+  id: string
+  stroke: 'forehand' | 'backhand'
+  stance: 'classic' | 'open'
+  /** Height of the ball at contact this clip is solved for. */
+  contactHeight: number
+  /** First and last clip time. Contact is 0. */
+  start: number
+  end: number
+  tracks: FigureTracks
+}
+
+/** Where and when a clip plays in a scene. */
+export interface ClipPlacement {
+  clip: string
+  /** Scene time of contact. */
+  at: number
+  /** Floor point under the contact, court space. */
+  anchor: { x: number; y: number }
+  /** Flip across the court's long axis and swap left and right limbs. */
+  mirror?: boolean
+  /** Play only this window of clip time (drills repeat the swing without the walk in). */
+  from?: number
+  to?: number
+}
+
+/** Solved skeleton. Limbs keep the prototype's joint names. This is what any renderer draws, 2D or 3D. */
+export interface Leg { hip: Vec3; knee: Vec3; ankle: Vec3; heel: Vec3; toe: Vec3; stretch: number }
+export interface Arm { shoulder: Vec3; elbow: Vec3; hand: Vec3; stretch: number }
+export interface Racquet { hand: Vec3; head: Vec3; butt: Vec3; dir: Vec3; face: Vec3 }
+export interface FigurePose {
+  pelvis: Vec3
+  chest: Vec3
+  head: Vec3
+  shoulderL: Vec3
+  shoulderR: Vec3
+  hipL: Vec3
+  hipR: Vec3
+  legL: Leg
+  legR: Leg
+  armL: Arm
+  armR: Arm
+  racquet: Racquet
+}
+
+export interface Camera {
+  pos: Vec3
+  target: Vec3
+  /** Horizontal field of view, degrees. */
+  fov: number
+  up?: Vec3
+}
+export type CameraId = 'quarterWide' | 'quarterClose' | 'behind' | 'top'
+
+/** Times are relative to the scene's first 'strike' event. */
+export interface Director {
+  camera: { t: number; cam: CameraId; ease?: 'cut' | 'move' }[]
+  pace: Track<number>
+}

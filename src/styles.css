@@ -26,6 +26,13 @@
   --bad-soft: #fbe3e1;
   --target: rgba(35, 132, 90, 0.2);
   --target-edge: rgba(35, 132, 90, 0.6);
+  --wall-side: #f6f0e6;
+  --stage: #efe8dd;
+  --figure: #2f3a36;
+  --figure-far: #66716c;
+  --figure-edge: #fffdf9;
+  --racquet: #1d2320;
+  --shadow: rgba(60, 40, 10, 0.2);
   --shadow-1: 0 1px 2px rgba(40, 30, 20, 0.06), 0 2px 8px rgba(40, 30, 20, 0.05);
   --shadow-2: 0 2px 6px rgba(40, 30, 20, 0.06), 0 16px 40px -16px rgba(40, 30, 20, 0.22);
   --radius: 20px;
@@ -60,6 +67,13 @@
     --bad-soft: #3d2120;
     --target: rgba(95, 207, 148, 0.18);
     --target-edge: rgba(95, 207, 148, 0.55);
+    --wall-side: #252927;
+    --stage: #171a18;
+    --figure: #e9e3d8;
+    --figure-far: #a39c90;
+    --figure-edge: #1f2220;
+    --racquet: #eef1ee;
+    --shadow: rgba(0, 0, 0, 0.4);
     --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
     --shadow-2: 0 2px 6px rgba(0, 0, 0, 0.35), 0 16px 40px -16px rgba(0, 0, 0, 0.7);
     color-scheme: dark;
@@ -90,6 +104,13 @@
   --bad-soft: #3d2120;
   --target: rgba(95, 207, 148, 0.18);
   --target-edge: rgba(95, 207, 148, 0.55);
+  --wall-side: #252927;
+  --stage: #171a18;
+  --figure: #e9e3d8;
+  --figure-far: #a39c90;
+  --figure-edge: #1f2220;
+  --racquet: #eef1ee;
+  --shadow: rgba(0, 0, 0, 0.4);
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-2: 0 2px 6px rgba(0, 0, 0, 0.35), 0 16px 40px -16px rgba(0, 0, 0, 0.7);
   color-scheme: dark;
@@ -344,3 +365,7 @@ h1, h2, h3, p { margin: 0; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; }
 }
+
+/* ---------- Canvas stage ---------- */
+.stage-canvas { position: relative; background: var(--stage); overflow: hidden; }
+.stage-canvas > canvas { display: block; width: 100%; aspect-ratio: 358 / 400; touch-action: pan-y; }

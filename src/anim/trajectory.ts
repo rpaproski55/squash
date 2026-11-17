@@ -1,6 +1,6 @@
 import type { BallPoint, PlayerKey, Scene } from './types'
 
-export interface Vec3 { x: number; y: number; z: number }
+export interface BallPos { x: number; y: number; z: number }
 
 function segmentIndex(points: { t: number }[], t: number): number {
   // Last index i with points[i].t <= t, clamped so i+1 exists.
@@ -14,7 +14,7 @@ function segmentIndex(points: { t: number }[], t: number): number {
  * gravity (x and y linear), except segments ending in a 'roll' point, which
  * run along the floor. Returns null before the first point.
  */
-export function ballAt(points: BallPoint[], t: number, gravity: number): Vec3 | null {
+export function ballAt(points: BallPoint[], t: number, gravity: number): BallPos | null {
   if (points.length === 0 || t < points[0].t) return null
   const last = points[points.length - 1]
   if (t >= last.t) return { x: last.x, y: last.y, z: last.z }
@@ -33,8 +33,8 @@ export function ballAt(points: BallPoint[], t: number, gravity: number): Vec3 | 
 }
 
 /** Sampled ball positions between t0 and t1 (inclusive), for trails and paths. */
-export function samplePath(points: BallPoint[], gravity: number, t0: number, t1: number, step = 1 / 60): Vec3[] {
-  const out: Vec3[] = []
+export function samplePath(points: BallPoint[], gravity: number, t0: number, t1: number, step = 1 / 60): BallPos[] {
+  const out: BallPos[] = []
   const start = Math.max(t0, points[0]?.t ?? 0)
   for (let t = start; t < t1; t += step) {
     const p = ballAt(points, t, gravity)

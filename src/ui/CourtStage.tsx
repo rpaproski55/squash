@@ -2,7 +2,7 @@ import { AnimatePresence, LayoutGroup, motion, useReducedMotion } from 'motion/r
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { COURT, RACQUET, T_POINT, sideOutAt } from '../anim/court'
 import { getSceneSet } from '../anim/scenes'
-import { ballAt, captionAt, counterAt, playerAt, samplePath, swingAt, type Vec3 } from '../anim/trajectory'
+import { ballAt, captionAt, counterAt, playerAt, samplePath, swingAt, type BallPos as Vec3 } from '../anim/trajectory'
 import type { BallPoint, Scene } from '../anim/types'
 import { Icon } from './Icon'
 
