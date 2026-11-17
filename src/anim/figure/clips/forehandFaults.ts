@@ -8,9 +8,14 @@ import type { FigureTracks } from '../../types'
  * ball, convert into the chest frame at contact.
  */
 
-/** Too short: face nearly closed (3 degrees open instead of 14) and contact 5 cm lower. */
+/**
+ * Too short: face nearly closed (3 degrees open instead of 14) and contact 5 cm
+ * lower. The pelvis sits 4 cm lower at contact so the arm stays within reach;
+ * the hand key is raised by the same 4 cm, so the racquet still meets the ball.
+ */
 export const FAULT_SHORT: Partial<FigureTracks> = {
-  handR: [[0, [-0.052, 0.244, -0.448]]],
+  pelvisHeight: [[0, 0.66]],
+  handR: [[0, [-0.052, 0.244, -0.408]]],
   racquetFace: [[0, [-0.961, 0.271, 0.049], 'peak']],
 }
 /** Ball 5 cm lower at contact, to match. */

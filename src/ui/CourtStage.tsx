@@ -147,15 +147,18 @@ export function CourtStage({ setId, variant = 0, onVariant, showVariants = false
   seekRef.current = seek
   useEffect(() => {
     if (compact) return
+    // The first full stage on the page owns the hook (the skill page also has the drill's stage).
     const w = window as unknown as { __seek?: (t: number, m?: ViewMode) => void }
-    w.__seek = (v, m) => {
+    if (w.__seek) return
+    const hook = (v: number, m?: ViewMode) => {
       if (m) {
         live.current.mode = m
         setMode(m)
       }
       seekRef.current(v)
     }
-    return () => { delete w.__seek }
+    w.__seek = hook
+    return () => { if (w.__seek === hook) delete w.__seek }
   }, [compact])
 
   const cue = caption?.cue

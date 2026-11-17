@@ -93,7 +93,8 @@ const short: Scene = {
   players: [you(FAULT_SHORT)],
   zones: ZONES,
   captions: at([
-    { t: -2.0, text: 'Same swing, aimed too low' },
+    { t: -2.0, text: 'Watch the racquet face at contact' },
+    { t: -0.03, text: 'Face too closed, ball stays low' },
     { t: 0.55, text: 'Hits the wall near the service line' },
     { t: 1.15, text: 'Lands short and sits up mid-court', tone: 'bad' },
   ]),
@@ -116,7 +117,8 @@ const loose: Scene = {
   players: [you(FAULT_LOOSE)],
   zones: ZONES,
   captions: at([
-    { t: -2.0, text: 'Watch where this one lands' },
+    { t: -2.0, text: 'Watch the chest at contact' },
+    { t: -0.03, text: 'Chest opened early, hit in front' },
     { t: 0.55, text: 'Angles off the wall' },
     { t: 1.35, text: 'Deep, but in the middle: easy to volley from the T', tone: 'bad' },
   ]),
@@ -139,7 +141,8 @@ const long: Scene = {
   players: [you(FAULT_LONG)],
   zones: ZONES,
   captions: at([
-    { t: -2.0, text: 'Hit high and hard' },
+    { t: -2.0, text: 'Watch the follow-through' },
+    { t: 0.05, text: 'Swung up and through it' },
     { t: 1.3, text: 'Slams the back wall' },
     { t: 2.2, text: 'Pops back out for an easy ball', tone: 'bad' },
   ]),

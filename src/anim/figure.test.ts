@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { CAMERAS, makeProjector, STAGE } from './camera'
 import { FOREHAND_DRIVE } from './figure/clips'
-import { figureAt } from './figure/figureAt'
+import { clipOf, figureAt } from './figure/figureAt'
+import { sampleArc } from './tracks'
 import { footAt, placeFigure, solveFigure } from './figure/solve'
 import { DEFAULT_DIRECTOR, directedCamera, directorFor, paceAt } from './director'
 import { SCENE_SETS } from './scenes'
@@ -218,5 +219,47 @@ describe('the drill repeats the swing', () => {
     const gapEnd = ms[1].at - 0.62
     const mid = figureAt(you, (gapStart + gapEnd) / 2)!
     expect(mid.legL.ankle[2]).toBeGreaterThan(0.08 + 0.05)
+  })
+})
+
+describe('the misses show their body fault (PLAN.md step 7)', () => {
+  const byId = Object.fromEntries(SCENE_SETS['straight-drive'].variants.map((v) => [v.id, v]))
+  const fig = (id: string, tau: number) => figureAt(byId[id].players[0], byId[id].players[0].motion![0].at + tau)!
+  const tilt = (f: FigurePose) => Math.asin(f.racquet.face[2]) / RAD
+  const reach = (id: string) => {
+    let worst = 0
+    for (const t of range(-2, 1.9, 0.01)) {
+      const f = fig(id, t)
+      worst = Math.max(worst, f.legL.stretch, f.legR.stretch, f.armL.stretch, f.armR.stretch)
+    }
+    return worst
+  }
+
+  it('too short: face nearly closed and contact lower', () => {
+    expect(tilt(fig('short', 0))).toBeLessThan(5)
+    expect(tilt(fig('good', 0))).toBeGreaterThan(12)
+    expect(fig('short', 0).racquet.head[2]).toBeCloseTo(0.5, 1)
+    expect(reach('short')).toBeLessThanOrEqual(1.04)
+  })
+
+  it('off the wall: chest open and contact in front of the front foot', () => {
+    const f = fig('loose', 0)
+    expect(f.legL.ankle[1] - f.racquet.head[1]).toBeGreaterThan(0.2)
+    // shoulder line faces more to the front wall than in the good swing
+    const shoulders = (g: FigurePose) => Math.atan2(g.shoulderR[1] - g.shoulderL[1], g.shoulderR[0] - g.shoulderL[0]) / RAD
+    expect(shoulders(f)).toBeCloseTo(45, 0)
+    expect(shoulders(fig('good', 0))).toBeCloseTo(75, 0)
+    expect(reach('loose')).toBeLessThanOrEqual(1.04)
+  })
+
+  it('too hard: face more open and the racquet finishes further round', () => {
+    expect(tilt(fig('long', 0))).toBeGreaterThan(18)
+    // racquet travel after contact, in the chest frame where the follow-through is authored
+    const travel = (id: string) => {
+      const c = clipOf(byId[id].players[0].motion![0])
+      return deg(sampleArc(c.tracks.racquetDir, 0), sampleArc(c.tracks.racquetDir, 0.4))
+    }
+    expect(travel('long') / travel('good')).toBeCloseTo(1.3, 1)
+    expect(reach('long')).toBeLessThanOrEqual(1.04)
   })
 })

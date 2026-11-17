@@ -96,7 +96,10 @@ describe('teaching moments (DIRECTION.md table)', () => {
     const marks = good.captions.filter((c) => c.mark).map((c) => [c.mark, +(c.t - STRIKE).toFixed(2)])
     expect(marks).toEqual([['racquet', -1.45], ['foot', -0.62], ['contact', -0.03]])
   })
-  it('misses show no body highlight until their swing shows the fault (PLAN.md step 7)', () => {
-    for (const v of STRAIGHT_DRIVE.variants.slice(1)) expect(v.captions.some((c) => c.mark)).toBe(false)
+  it('misses name their body fault but draw no good-swing highlight', () => {
+    for (const v of STRAIGHT_DRIVE.variants.slice(1)) {
+      expect(v.captions.some((c) => c.mark)).toBe(false)
+      expect(v.players[0].motion![0].overrides).toBeDefined()
+    }
   })
 })

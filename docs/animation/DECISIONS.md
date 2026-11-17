@@ -211,3 +211,27 @@ Verified, and how:
   phone size. Options: keep it, add a racquet-face close-up, or add an
   upright body (less knee bend and lean) with the closed face (recommended).
 - Miss captions still describe only the ball until the owner approves.
+
+## Build session, Step 7, 2026-11-17
+
+- Owner: approved the "Off the wall" and "Too hard" fault poses. For "Too
+  short" the owner chose the least-effort option: keep the planned fault as
+  drawn (face 3 degrees open, contact 5 cm lower), accepting it is subtle at
+  phone size; the ball shows the miss.
+- "Too short" sits 4 cm lower at contact (`pelvisHeight` 0.66) with the hand
+  key raised by the same 4 cm: without it the arm reached 1.047 stretch near
+  contact, past the 1.04 limit. The racquet still meets the ball at 0.50 m.
+- Miss captions: the fault caption from PLAN.md at the contact freeze ("Face
+  too closed, ball stays low", "Chest opened early, hit in front") or at the
+  start of the follow-through ("Swung up and through it"). Their opening
+  captions now point at the fault ("Watch the racquet face at contact", "Watch
+  the chest at contact", "Watch the follow-through"). The old "Same swing,
+  aimed too low" was no longer true. No body highlights on the misses: the
+  good swing's contact line would be wrong for a ball met in front.
+- Tests: each fault measured (face tilt, contact height, contact ahead of the
+  front foot, shoulder line at 45, follow-through 1.3 times the racquet travel
+  in the chest frame) and every limb within 1.04 reach.
+- Bug fixed: since Step 6 the drill's stage also registered the `__seek` test
+  hook and took it over from the main stage. The first stage on a page now
+  keeps it. The Step 4 and 5 checks ran before that and stand; the Step 6
+  draw-cost figure was measured on the drill's stage (same renderer).
