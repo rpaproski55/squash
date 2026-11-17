@@ -3,7 +3,7 @@ import { CAMERAS, makeProjector, STAGE } from './camera'
 import { FOREHAND_DRIVE } from './figure/clips'
 import { figureAt } from './figure/figureAt'
 import { footAt, placeFigure, solveFigure } from './figure/solve'
-import { DEFAULT_DIRECTOR, directedCamera, paceAt } from './director'
+import { DEFAULT_DIRECTOR, directedCamera, directorFor, paceAt } from './director'
 import { SCENE_SETS } from './scenes'
 import { ballAt } from './trajectory'
 import { sampleTrack } from './tracks'
@@ -158,12 +158,14 @@ describe('the directed sequence', () => {
   it('10. keeps the player and the ball in frame', () => {
     const inside = (p: { x: number; y: number }) => p.x >= 0 && p.x <= STAGE.w && p.y >= 0 && p.y <= STAGE.h
     const moving = (tau: number) => DEFAULT_DIRECTOR.camera.some((k, i) => k.ease === 'move' && tau > DEFAULT_DIRECTOR.camera[i - 1].t && tau < k.t)
-    for (const scene of scenes.filter((s) => s.players.some((p) => p.motion))) {
+    const all = Object.values(SCENE_SETS).flatMap((set) => set.variants.map((scene) => ({ set, scene })))
+    for (const { set, scene } of all) {
+      const dir = directorFor(scene, set)
       const strike = scene.ball.find((p) => p.event === 'strike')!.t
       for (let i = 0; i < 20; i++) {
         const t = (scene.duration * i) / 19
         const tau = t - strike
-        const P = makeProjector(directedCamera(DEFAULT_DIRECTOR, tau), STAGE.w, STAGE.h)
+        const P = makeProjector(directedCamera(dir, tau), STAGE.w, STAGE.h)
         const fig = figureAt(scene.players[0], t)!
         expect(inside(P.project(fig.pelvis)), `${scene.id} pelvis at ${t.toFixed(2)}`).toBe(true)
         const b = ballAt(scene.ball, t, scene.gravity)
@@ -182,5 +184,39 @@ describe('the directed sequence', () => {
         expect(p).toBeLessThanOrEqual(1)
       }
     }
+  })
+})
+
+describe('the drill repeats the swing', () => {
+  const drill = SCENE_SETS['drive-streak'].variants[0]
+  const you = drill.players[0]
+
+  it('plays one placement per strike, each meeting the ball', () => {
+    const strikes = drill.ball.filter((p) => p.event === 'strike')
+    expect(you.motion).toHaveLength(strikes.length)
+  })
+
+  it('moves smoothly between swings: in the gaps no joint moves more than 6 cm in 10 ms', () => {
+    const joints = (f: FigurePose): Vec3[] => [f.pelvis, f.chest, f.head, f.legL.ankle, f.legR.ankle, f.armR.hand, f.racquet.head]
+    const ms = you.motion!
+    let worst = 0
+    for (let i = 0; i < ms.length - 1; i++) {
+      // from the end of one swing's window to the start of the next, including both edges
+      let prev = joints(figureAt(you, ms[i].at + 0.42 - 0.01)!)
+      for (const t of range(ms[i].at + 0.42, ms[i + 1].at - 0.62 + 0.01, 0.01)) {
+        const cur = joints(figureAt(you, t)!)
+        cur.forEach((p, j) => (worst = Math.max(worst, V.len(V.sub(p, prev[j])))))
+        prev = cur
+      }
+    }
+    expect(worst).toBeLessThan(0.06)
+  })
+
+  it('a foot that moves between swings steps (lifts) instead of sliding', () => {
+    const ms = you.motion!
+    const gapStart = ms[0].at + 0.42
+    const gapEnd = ms[1].at - 0.62
+    const mid = figureAt(you, (gapStart + gapEnd) / 2)!
+    expect(mid.legL.ankle[2]).toBeGreaterThan(0.08 + 0.05)
   })
 })

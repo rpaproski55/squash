@@ -4,10 +4,9 @@ import { cameraFor, directorFor, paceAt, type ViewMode } from '../anim/director'
 import { figureAt } from '../anim/figure/figureAt'
 import { strikeTime } from '../anim/render/canvas'
 import { getSceneSet } from '../anim/scenes'
-import { captionAt } from '../anim/trajectory'
+import { captionAt, counterAt } from '../anim/trajectory'
 import type { Caption, FigurePose, Scene, SceneSet } from '../anim/types'
 import { Icon } from './Icon'
-import { LegacyCourtStage } from './LegacyCourtStage'
 import { useStageCanvas } from './useStageCanvas'
 
 /*
@@ -34,28 +33,25 @@ interface StageProps {
   onVariant?: (i: number) => void
   showVariants?: boolean
   onCue?: (cue: number | undefined) => void
-  /** Small preview: Auto sequence, no controls, no caption. */
+  /** Small preview: Auto sequence, no controls, no caption. Plays once when scrolled into view, then holds the last frame. */
   compact?: boolean
 }
 
-export function CourtStage(props: StageProps) {
-  const set = getSceneSet(props.setId)
-  const scene = set.variants[props.variant ?? 0] ?? set.variants[0]
-  // Scenes without a figure (the drill) stay on the first build's stage until PLAN.md step 6.
-  if (!scene.players.some((p) => p.motion?.length)) return <LegacyCourtStage {...props} />
-  return <CanvasCourtStage {...props} set={set} scene={scene} />
-}
-
-function CanvasCourtStage({ setId, variant = 0, onVariant, showVariants = false, onCue, compact = false, set, scene }: StageProps & { set: SceneSet; scene: Scene }) {
+export function CourtStage({ setId, variant = 0, onVariant, showVariants = false, onCue, compact = false }: StageProps) {
+  const set: SceneSet = getSceneSet(setId)
+  const scene: Scene = set.variants[variant] ?? set.variants[0]
   const reduced = useReducedMotion() ?? false
   const director = directorFor(scene, set)
   const strike = strikeTime(scene)
 
   // Reduced motion: hold the contact pose in the Swing view (quarterClose at contact), no autoplay.
-  const [mode, setMode] = useState<ViewMode>(reduced && !compact ? 'swing' : 'auto')
+  const [mode, setMode] = useState<ViewMode>(reduced && !compact && director.camera.length > 1 ? 'swing' : 'auto')
   const [playing, setPlaying] = useState(!reduced)
   const [speed, setSpeed] = useState(1)
   const [caption, setCaption] = useState<Caption | null>(null)
+  const [counter, setCounter] = useState<ReturnType<typeof counterAt>>(null)
+  // A director with one camera (the drill) has no views to choose from.
+  const fixedView = director.camera.length === 1
 
   const t = useRef(reduced ? strike : 0)
   const fade = useRef(0)
@@ -79,6 +75,8 @@ function CanvasCourtStage({ setId, variant = 0, onVariant, showVariants = false,
     })
     const cap = captionAt(scene, t.current)
     setCaption((prev) => (prev === cap ? prev : cap))
+    const cnt = counterAt(scene, t.current)
+    setCounter((prev) => (prev === cnt ? prev : cnt))
     if (scrubRef.current && !scrubbing.current) scrubRef.current.value = String(t.current)
   }
   const stage = useStageCanvas(draw)
@@ -99,7 +97,7 @@ function CanvasCourtStage({ setId, variant = 0, onVariant, showVariants = false,
   useEffect(() => {
     const el = stage.canvasRef.current
     if (!el) return
-    const io = new IntersectionObserver(([e]) => setVisible(e.isIntersecting), { threshold: 0.15 })
+    const io = new IntersectionObserver(([e]) => setVisible(e.isIntersecting), { threshold: compact ? 0.5 : 0.15 })
     io.observe(el)
     return () => io.disconnect()
   }, [stage.canvasRef])
@@ -114,8 +112,9 @@ function CanvasCourtStage({ setId, variant = 0, onVariant, showVariants = false,
       const { scene, mode, speed, reduced, director, strike } = live.current
       t.current += dt * paceAt(director, t.current - strike, mode) * speed
       const tail = scene.duration - t.current
-      if (reduced) {
-        // Play once and stop on the last frame: no loop, no fade.
+      if (reduced || compact) {
+        // Play once and stop on the last frame: no loop, no fade out. The fade in still clears.
+        fade.current = reduced ? 0 : Math.max(0, fade.current - dt * 4)
         if (tail <= 0) {
           t.current = scene.duration
           setPlaying(false)
@@ -185,8 +184,16 @@ function CanvasCourtStage({ setId, variant = 0, onVariant, showVariants = false,
       )}
 
       <div className="stage-canvas">
-        <canvas ref={stage.canvasRef} role="img" aria-label={`Animated straight drive: ${scene.label}. ${caption?.text ?? ''}`} />
-        {!compact && (
+        <canvas ref={stage.canvasRef} role="img" aria-label={`Animation: ${scene.label}. ${caption?.text ?? ''}`} />
+        {counter && (
+          <div className={`stage-counter ${counter.tone ?? ''}`} aria-live="polite">
+            <motion.b key={`${counter.t}`} initial={reduced ? false : { scale: 1.4 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 18 }}>
+              {counter.value}
+            </motion.b>
+            <span>in a row</span>
+          </div>
+        )}
+        {!compact && !fixedView && (
           <div className="stage-view">
             <Segmented id={`view-${setId}`} value={mode} options={VIEWS} onChange={chooseMode} />
           </div>

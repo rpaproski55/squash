@@ -143,18 +143,21 @@ export const STRAIGHT_DRIVE: SceneSet = { id: 'straight-drive', variants: [good,
 
 /* ---------- Drill: drive streak ---------- */
 
+/** Floor point under the drill's contact. */
+const DRILL_ANCHOR = { x: 5.6, y: 8.1 }
+
 function drillScene(): Scene {
   const C = 1.7
   const ball: BallPoint[] = [{ t: 0, x: 5.6, y: 8.1, z: 0.95, event: 'feed' }]
-  const keys: NonNullable<Player['keys']> = [{ t: 0, x: 5.05, y: 7.95 }]
+  const motion: NonNullable<Player['motion']> = []
   const counter: NonNullable<Scene['counter']> = [{ t: 0, value: 0 }]
   const captions: Scene['captions'] = [{ t: 0, text: 'Drive to yourself, down the same wall' }]
   const goodShots = 5
   for (let k = 0; k <= goodShots; k++) {
     const s = 0.3 + k * C
     const bad = k === goodShots
-    keys.push({ t: s, x: 5.05, y: 7.95, swing: 'forehand' })
-    keys.push({ t: s + 0.8, x: 5.1 + (k % 2) * 0.08, y: 7.85 })
+    // The swing without the walk in: from the back foot planting to the end of the follow-through.
+    motion.push({ clip: 'forehand-drive-classic', at: s, anchor: DRILL_ANCHOR, from: -0.62, to: 0.42 })
     ball.push({ t: s, x: 5.6, y: 8.1, z: 0.55, event: 'strike' })
     if (!bad) {
       ball.push({ t: s + 0.55, x: 5.95, y: 0, z: 2.15, event: 'front' })
@@ -178,11 +181,16 @@ function drillScene(): Scene {
     duration: end + 0.8,
     gravity: G,
     ball,
-    players: [{ id: 'you', role: 'you', label: 'You', keys }],
+    players: [{ id: 'you', role: 'you', label: 'You', motion }],
     zones: [ZONES[1]],
     captions,
     counter,
   }
 }
 
-export const DRIVE_STREAK: SceneSet = { id: 'drive-streak', variants: [drillScene()] }
+/** The drill is watched from behind only, at normal speed: the count is the point, not the swing. */
+export const DRIVE_STREAK: SceneSet = {
+  id: 'drive-streak',
+  director: { camera: [{ t: -10, cam: 'behind' }], pace: [[0, 1]] },
+  variants: [drillScene()],
+}

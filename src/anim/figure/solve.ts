@@ -45,19 +45,95 @@ const UP: Vec3 = [0, 0, 1]
 /** Fixed elbow pole for the off arm, chest frame. */
 const OFF_ELBOW: Vec3 = [-0.5, -0.3, -0.8]
 
+/** Every channel of a clip sampled at one time: what the solver needs, and what two swings blend. */
+export interface Channels {
+  pelvisOffset: Vec2
+  pelvisHeight: number
+  hipYaw: number
+  chestYaw: number
+  lean: number
+  /** Ankle floor position and lift. */
+  footL: Vec3
+  footR: Vec3
+  toeL: number
+  toeR: number
+  handR: Vec3
+  handL: Vec3
+  racquetDir: Vec3
+  racquetFace: Vec3
+  elbowR: Vec3
+}
+
+/** Sample every channel of a clip at clip time tau (clamped to the clip). */
+export function sampleChannels(clip: FigureClip, tau: number): Channels {
+  const T = clip.tracks
+  const t = Math.min(clip.end, Math.max(clip.start, tau))
+  return {
+    pelvisOffset: sampleTrack(T.pelvisOffset, t),
+    pelvisHeight: sampleTrack(T.pelvisHeight, t),
+    hipYaw: sampleTrack(T.hipYaw, t),
+    chestYaw: sampleTrack(T.chestYaw, t),
+    lean: sampleTrack(T.lean, t),
+    footL: footAt(T.footL, t),
+    footR: footAt(T.footR, t),
+    toeL: sampleTrack(T.toeL, t),
+    toeR: sampleTrack(T.toeR, t),
+    handR: sampleTrack(T.handR, t),
+    handL: sampleTrack(T.handL, t),
+    racquetDir: sampleArc(T.racquetDir, t),
+    racquetFace: sampleArc(T.racquetFace, t),
+    elbowR: sampleArc(T.elbowR, t),
+  }
+}
+
+/**
+ * Blend two channel sets, k from 0 (a) to 1 (b). Directions are blended and
+ * renormalised. A foot that changes place is lifted, as in a step, so a blend
+ * between two swings never slides a foot along the floor.
+ */
+export function blendChannels(a: Channels, b: Channels, k: number): Channels {
+  const n = (x: number, y: number) => x + (y - x) * k
+  const n2 = (x: Vec2, y: Vec2): Vec2 => [n(x[0], y[0]), n(x[1], y[1])]
+  const dir = (x: Vec3, y: Vec3) => V.norm(V.lerp(x, y, k))
+  const foot = (x: Vec3, y: Vec3): Vec3 => {
+    const dist = Math.hypot(y[0] - x[0], y[1] - x[1])
+    const step = dist > 1e-6 ? BODY.stepLift * Math.min(1, dist / 0.8) * Math.sin(Math.PI * k) : 0
+    return [n(x[0], y[0]), n(x[1], y[1]), Math.max(n(x[2], y[2]), step)]
+  }
+  return {
+    pelvisOffset: n2(a.pelvisOffset, b.pelvisOffset),
+    pelvisHeight: n(a.pelvisHeight, b.pelvisHeight),
+    hipYaw: n(a.hipYaw, b.hipYaw),
+    chestYaw: n(a.chestYaw, b.chestYaw),
+    lean: n(a.lean, b.lean),
+    footL: foot(a.footL, b.footL),
+    footR: foot(a.footR, b.footR),
+    toeL: n(a.toeL, b.toeL),
+    toeR: n(a.toeR, b.toeR),
+    handR: V.lerp(a.handR, b.handR, k),
+    handL: V.lerp(a.handL, b.handL, k),
+    racquetDir: dir(a.racquetDir, b.racquetDir),
+    racquetFace: dir(a.racquetFace, b.racquetFace),
+    elbowR: dir(a.elbowR, b.elbowR),
+  }
+}
+
 /** Solve the whole skeleton at clip time tau. Joints are in the clip frame (u, v, z). */
 export function solveFigure(clip: FigureClip, tau: number): FigurePose {
-  const T = clip.tracks
+  return solveChannels(sampleChannels(clip, tau))
+}
+
+/** Solve the skeleton from sampled channels. Joints are in the clip frame (u, v, z). */
+export function solveChannels(ch: Channels): FigurePose {
   const B = BODY
-  const t = Math.min(clip.end, Math.max(clip.start, tau))
-  const fl0 = sampleTrack(T.footL, t)
-  const fr0 = sampleTrack(T.footR, t)
-  const off = sampleTrack(T.pelvisOffset, t)
+  const fl0 = ch.footL
+  const fr0 = ch.footR
+  const off = ch.pelvisOffset
   // The pelvis rides midway between the feet (plus a keyed offset), so the legs can always reach.
-  const pelvis: Vec3 = [(fl0[0] + fr0[0]) / 2 + off[0], (fl0[1] + fr0[1]) / 2 + off[1], sampleTrack(T.pelvisHeight, t)]
-  const hy = sampleTrack(T.hipYaw, t) * RAD
-  const cy = sampleTrack(T.chestYaw, t) * RAD
-  const lean = sampleTrack(T.lean, t) * RAD
+  const pelvis: Vec3 = [(fl0[0] + fr0[0]) / 2 + off[0], (fl0[1] + fr0[1]) / 2 + off[1], ch.pelvisHeight]
+  const hy = ch.hipYaw * RAD
+  const cy = ch.chestYaw * RAD
+  const lean = ch.lean * RAD
   const hipRight = right(hy)
   const cF = fwd(cy)
   const cR = right(cy)
@@ -70,9 +146,8 @@ export function solveFigure(clip: FigureClip, tau: number): FigurePose {
   const hipR = V.add(pelvis, V.mul(hipRight, B.hipHalf))
   const hipL = V.add(pelvis, V.mul(hipRight, -B.hipHalf))
 
-  const leg = (hip: Vec3, footTrack: Track<Vec2>, toeTrack: Track<number>): Leg => {
-    const f = footAt(footTrack, t)
-    const tf = fwd(sampleTrack(toeTrack, t) * RAD)
+  const leg = (hip: Vec3, f: Vec3, toeYaw: number): Leg => {
+    const tf = fwd(toeYaw * RAD)
     const ankleT: Vec3 = [f[0], f[1], f[2] + B.ankle]
     const pole = V.norm(V.add(V.add(V.mul(fwd(hy), 0.6), V.mul(tf, 0.6)), [0, 0, 0.25]))
     const s = ik2(hip, ankleT, B.thigh, B.shin, pole)
@@ -86,13 +161,13 @@ export function solveFigure(clip: FigureClip, tau: number): FigurePose {
       stretch: s.stretch,
     }
   }
-  const legL = leg(hipL, T.footL, T.toeL)
-  const legR = leg(hipR, T.footR, T.toeR)
+  const legL = leg(hipL, ch.footL, ch.toeL)
+  const legR = leg(hipR, ch.footR, ch.toeR)
 
-  const aR = ik2(shoulderR, fromChest(sampleTrack(T.handR, t)), B.upperArm, B.forearm, dirFromChest(sampleArc(T.elbowR, t)))
-  const aL = ik2(shoulderL, fromChest(sampleTrack(T.handL, t)), B.upperArm, B.forearm, dirFromChest(OFF_ELBOW))
-  const rDir = dirFromChest(sampleArc(T.racquetDir, t))
-  let face = dirFromChest(sampleArc(T.racquetFace, t))
+  const aR = ik2(shoulderR, fromChest(ch.handR), B.upperArm, B.forearm, dirFromChest(ch.elbowR))
+  const aL = ik2(shoulderL, fromChest(ch.handL), B.upperArm, B.forearm, dirFromChest(OFF_ELBOW))
+  const rDir = dirFromChest(ch.racquetDir)
+  let face = dirFromChest(ch.racquetFace)
   face = V.norm(V.sub(face, V.mul(rDir, V.dot(face, rDir)))) // keep the face normal square to the shaft
   const hand = aR.end
   const armR: Arm = { shoulder: shoulderR, elbow: aR.mid, hand, stretch: aR.stretch }

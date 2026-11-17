@@ -162,3 +162,35 @@ Verified, and how:
   pixel-identical. Settling both pages before the first capture removed the
   first-frame race seen in Steps 2 to 4. Captions and marks tested in
   `scenes.test.ts`.
+
+## Build session, Step 6, 2026-11-17
+
+- Today card: Auto sequence, no controls, plays once when at least half of it
+  is on screen, then holds the last frame (ball dead in the corner, both good
+  marks, player back on the T). Under reduced motion it holds the contact
+  frame.
+- Drill: one placement per swing, `from -0.62 to 0.42`, behind camera only
+  (the drill's SceneSet has a one-camera director and flat pace 1, so the view
+  switcher is hidden), counter in the DOM over the stage. The drill now uses
+  the canvas stage; nothing uses `LegacyCourtStage.tsx` any more (deleted in
+  Step 8).
+- **Blend between swings: changed from the plan.** ARCHITECTURE.md says to
+  blend over 0.15 s. The gap between two drill swings is 0.66 s and the left
+  foot has to go 1.35 m back to where the next swing starts, so a 0.15 s blend
+  would hold the finish for half a second and then slide the foot 1.35 m in a
+  few frames: the pop the plan wants to avoid, and a sliding foot. Instead
+  the blend runs smoothstep across the whole gap, and a foot that changes
+  place is lifted like a step (same lift formula as the clip's own steps).
+  Tested: in the gaps no joint moves more than 6 cm per 10 ms, and the moving
+  foot is off the floor mid-gap.
+- To blend, the solver is split into `sampleChannels` and `solveChannels`
+  (with `blendChannels` between). `solveFigure` is the two together; the POSES
+  table test confirms nothing changed.
+- The dotted ball path starts at the latest strike, so the drill's five shots
+  do not pile up. Identical for the one-strike scenes.
+- **Frame rate: not measured on a real phone.** This session has no phone.
+  Proxy in headless Chromium at 390 px and device pixel ratio 3, through the
+  whole Auto sequence: 60 fps with no long frames at normal speed; 60 fps with
+  2 frames over 25 ms at a 4x CPU slowdown; 59 fps with 3 at 6x. One frame's
+  solve and draw costs 0.17 ms (0.9 ms at 4x). **Open** for the owner: open
+  the skill page on a mid-range phone and say whether the camera move stutters.

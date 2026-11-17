@@ -53,7 +53,7 @@ export class CanvasStageRenderer implements StageRenderer {
     if (f.scene) this.drawZones(f.scene, f.tau)
     for (const fig of f.figures) this.drawGroundShadow(fig)
     const sc = f.scene
-    const strike = sc ? strikeTime(sc) : 0
+    const strike = sc ? lastStrikeBefore(sc, f.t) : 0
     const ball = sc ? toV(ballAt(sc.ball, f.t, sc.gravity)) : (f.ball ?? null)
     if (sc && ball) this.drawShotPathAndShadows(sc, f.t, strike, ball)
     if (sc && f.figures[0]) this.drawHighlights(sc, f.t, f.figures[0], !!f.reduced)
@@ -523,6 +523,13 @@ export class CanvasStageRenderer implements StageRenderer {
 }
 
 const toV = (p: { x: number; y: number; z: number } | null): Vec3 | null => (p ? [p.x, p.y, p.z] : null)
+
+/** Scene time of the latest strike at or before t (the dotted path starts there; drills strike many times). */
+export function lastStrikeBefore(scene: Scene, t: number): number {
+  let s = strikeTime(scene)
+  for (const p of scene.ball) if (p.event === 'strike' && p.t <= t) s = p.t
+  return s
+}
 
 /** Scene time of the first strike (the scene's contact moment). */
 export function strikeTime(scene: Scene): number {
