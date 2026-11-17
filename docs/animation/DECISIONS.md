@@ -194,3 +194,20 @@ Verified, and how:
   2 frames over 25 ms at a 4x CPU slowdown; 59 fps with 3 at 6x. One frame's
   solve and draw costs 0.17 ms (0.9 ms at 4x). **Open** for the owner: open
   the skill page on a mid-range phone and say whether the camera move stutters.
+
+## Build session, Step 7 draft, 2026-11-17 (awaiting owner OK)
+
+- Draft of the miss fault poses, committed for review only; Step 7 is not
+  done. Format: `ClipPlacement.overrides` (keys replace the clip's keys at
+  matching times). Data in `figure/clips/forehandFaults.ts`, contact keys
+  solved with the POSES.md method. Stills: `build/step7-faults-*.png`.
+- Off the wall: chest 45 at contact, contact 0.25 m ahead of the front foot,
+  racquet turned 3 degrees to the middle (the ball's actual angle in the
+  scene). Too hard: face 22 degrees open; follow-through 30 percent more
+  racquet angle and hand travel, hand capped at 0.53 m from the shoulder.
+  Too short: face 3 degrees open, contact 5 cm lower (hand at 1.03 stretch,
+  within the 1.04 limit).
+- **Open** for the owner: "Too short" cannot be told from the good swing at
+  phone size. Options: keep it, add a racquet-face close-up, or add an
+  upright body (less knee bend and lean) with the closed face (recommended).
+- Miss captions still describe only the ball until the owner approves.

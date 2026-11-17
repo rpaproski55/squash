@@ -141,6 +141,8 @@ export interface ClipPlacement {
   /** Play only this window of clip time (drills repeat the swing without the walk in). */
   from?: number
   to?: number
+  /** Replace keys of the clip at matching times (insert where there is none): a miss shows its body fault. */
+  overrides?: Partial<FigureTracks>
 }
 
 /** Solved skeleton. Limbs keep the prototype's joint names. This is what any renderer draws, 2D or 3D. */

@@ -1,17 +1,44 @@
-import type { ClipPlacement, FigurePose, Player } from '../types'
+import type { ClipPlacement, FigureClip, FigurePose, FigureTracks, Player, Track } from '../types'
 import { getClip } from './clips'
 import { blendChannels, placeFigure, sampleChannels, solveChannels } from './solve'
+
+/** A clip with a placement's overrides applied: override keys replace keys at the same time, or are inserted. */
+export function withOverrides(clip: FigureClip, overrides?: Partial<FigureTracks>): FigureClip {
+  if (!overrides) return clip
+  const tracks = { ...clip.tracks } as Record<string, Track<unknown>>
+  for (const [name, keys] of Object.entries(overrides) as [string, Track<unknown>][]) {
+    const merged = [...tracks[name]]
+    for (const k of keys) {
+      const i = merged.findIndex((b) => Math.abs(b[0] - k[0]) < 1e-9)
+      if (i >= 0) merged[i] = k
+      else merged.push(k)
+    }
+    tracks[name] = merged.sort((a, b) => a[0] - b[0])
+  }
+  return { ...clip, tracks: tracks as unknown as FigureTracks }
+}
+
+const resolved = new WeakMap<ClipPlacement, FigureClip>()
+/** The clip a placement plays, overrides applied (cached per placement). */
+export function clipOf(m: ClipPlacement): FigureClip {
+  let c = resolved.get(m)
+  if (!c) {
+    c = withOverrides(getClip(m.clip), m.overrides)
+    resolved.set(m, c)
+  }
+  return c
+}
 
 const smoothstep = (k: number) => k * k * (3 - 2 * k)
 
 /** Scene-time window a placement plays: [at + from, at + to]. */
 function windowOf(m: ClipPlacement): [number, number] {
-  const clip = getClip(m.clip)
+  const clip = clipOf(m)
   return [m.at + (m.from ?? clip.start), m.at + (m.to ?? clip.end)]
 }
 
 function sampleAt(m: ClipPlacement, t: number) {
-  const clip = getClip(m.clip)
+  const clip = clipOf(m)
   const tau = Math.min(m.to ?? clip.end, Math.max(m.from ?? clip.start, t - m.at))
   return sampleChannels(clip, tau)
 }

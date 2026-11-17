@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CAMERAS } from '../anim/camera'
 import { FOREHAND_DRIVE } from '../anim/figure/clips'
+import { figureAt } from '../anim/figure/figureAt'
 import { placeFigure, solveFigure } from '../anim/figure/solve'
 import { strikeTime } from '../anim/render/canvas'
 import { STRAIGHT_DRIVE } from '../anim/scenes/straightDrive'
@@ -51,7 +52,7 @@ export function DevSwing() {
     const tau = t.current - strike
     r.draw({
       t: t.current, tau, camera: CAMERAS[cam], ball: CONTACT, scene,
-      figures: [placeFigure(solveFigure(clip, tau), ANCHOR)],
+      figures: [scene ? figureAt(scene.players[0], t.current)! : placeFigure(solveFigure(clip, tau), ANCHOR)],
       size: stage.size.current, colors, skeleton,
     })
   }

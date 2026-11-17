@@ -1,5 +1,6 @@
 import { BOX_BACK, COURT, RACQUET } from '../court'
-import type { BallPoint, Caption, Player, Scene, SceneSet, Zone } from '../types'
+import { FAULT_LONG, FAULT_LOOSE, FAULT_SHORT, LOOSE_CONTACT_AHEAD, SHORT_CONTACT_DROP } from '../figure/clips/forehandFaults'
+import type { BallPoint, Caption, FigureTracks, Player, Scene, SceneSet, Zone } from '../types'
 
 /*
  * Forehand straight drive from the back right corner, right-handed player.
@@ -36,12 +37,17 @@ const FEED: BallPoint[] = [
 /** Floor point under the contact. */
 export const ANCHOR = { x: 5.6, y: 8.4 }
 
-const YOU: Player = {
+const you = (overrides?: Partial<FigureTracks>): Player => ({
   id: 'you',
   role: 'you',
   label: 'You',
-  motion: [{ clip: 'forehand-drive-classic', at: STRIKE, anchor: ANCHOR }],
-}
+  motion: [{ clip: 'forehand-drive-classic', at: STRIKE, anchor: ANCHOR, overrides }],
+})
+const YOU = you()
+
+/** The feed, ending where this version's racquet meets the ball. */
+const feedTo = (contact: { y?: number; z?: number }): BallPoint[] =>
+  FEED.map((p) => (p.event === 'strike' ? { ...p, y: contact.y ?? p.y, z: contact.z ?? p.z } : p))
 
 const good: Scene = {
   id: 'good',
@@ -70,7 +76,7 @@ const good: Scene = {
   ]),
 }
 
-// Misses keep the good swing until step 7 of PLAN.md, so their captions describe only the ball.
+// Misses show their body fault (figure/clips/forehandFaults.ts, PLAN.md step 7).
 const short: Scene = {
   id: 'short',
   label: 'Too short',
@@ -78,13 +84,13 @@ const short: Scene = {
   duration: 4.4 + LEAD,
   gravity: G,
   ball: shift([
-    ...FEED,
+    ...feedTo({ z: 0.55 - SHORT_CONTACT_DROP }),
     { t: 1.75, x: 5.9, y: 0, z: 1.75, event: 'front', mark: 'bad' },
     { t: 2.35, x: 5.95, y: 5.6, z: 0, event: 'bounce', mark: 'bad' },
     { t: 3.45, x: 6.0, y: 8.3, z: 0, event: 'bounce' },
     { t: 4.0, x: 6.0, y: 8.8, z: 0, event: 'roll' },
   ]),
-  players: [YOU],
+  players: [you(FAULT_SHORT)],
   zones: ZONES,
   captions: at([
     { t: -2.0, text: 'Same swing, aimed too low' },
@@ -100,14 +106,14 @@ const loose: Scene = {
   duration: 4.4 + LEAD,
   gravity: G,
   ball: shift([
-    ...FEED,
+    ...feedTo({ y: ANCHOR.y - LOOSE_CONTACT_AHEAD }),
     { t: 1.75, x: 5.2, y: 0, z: 2.1, event: 'front' },
     { t: 2.55, x: 4.5, y: 7.7, z: 0, event: 'bounce', mark: 'bad' },
     { t: 2.95, x: 4.25, y: COURT.length, z: 0.35, event: 'back' },
     { t: 3.3, x: 4.2, y: 9.3, z: 0, event: 'bounce' },
     { t: 3.9, x: 4.15, y: 9.0, z: 0, event: 'roll' },
   ]),
-  players: [YOU],
+  players: [you(FAULT_LOOSE)],
   zones: ZONES,
   captions: at([
     { t: -2.0, text: 'Watch where this one lands' },
@@ -130,7 +136,7 @@ const long: Scene = {
     { t: 3.4, x: 6.0, y: 6.9, z: 0, event: 'bounce', mark: 'bad' },
     { t: 4.0, x: 5.95, y: 6.3, z: 0, event: 'roll' },
   ]),
-  players: [YOU],
+  players: [you(FAULT_LONG)],
   zones: ZONES,
   captions: at([
     { t: -2.0, text: 'Hit high and hard' },
