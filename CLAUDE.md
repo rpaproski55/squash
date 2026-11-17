@@ -1,3 +1,5 @@
+@AGENTS.md
+
 # Squash app
 
 A guidance-first progress app for squash players. Read `docs/PRODUCT_BRIEF.md`
