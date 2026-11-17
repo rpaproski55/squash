@@ -215,22 +215,6 @@ h1, h2, h3, p { margin: 0; }
 .seg button > span { position: relative; z-index: 1; }
 
 /* ---------- Court stage ---------- */
-.stage { position: relative; background: var(--surface-2); }
-.stage > svg { display: block; width: 100%; height: auto; }
-.stage.top > svg { max-height: 58dvh; margin: 0 auto; width: auto; max-width: 100%; }
-.stage-caption {
-  min-height: 52px; padding: 8px 12px 10px;
-  display: flex; align-items: center; justify-content: center; pointer-events: none;
-}
-.stage-caption .pill {
-  display: inline-flex; align-items: center; gap: 8px;
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-  padding: 8px 14px; border-radius: 999px; box-shadow: var(--shadow-1);
-  font-weight: 700; font-size: 14.5px; line-height: 1.25; text-align: center;
-}
-.pill.good { color: var(--good); }
-.pill.bad { color: var(--bad); }
 .stage-view { position: absolute; left: 10px; top: 10px; }
 .stage-view .seg { background: color-mix(in srgb, var(--surface-2) 85%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: var(--shadow-1); }
 .stage-counter {

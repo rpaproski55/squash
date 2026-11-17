@@ -235,3 +235,20 @@ Verified, and how:
   hook and took it over from the main stage. The first stage on a page now
   keeps it. The Step 4 and 5 checks ran before that and stand; the Step 6
   draw-cost figure was measured on the drill's stage (same renderer).
+
+## Build session, Step 8, 2026-11-17
+
+- Deleted the first build's SVG stage (`LegacyCourtStage.tsx`), `swingAt`,
+  the `swing` field on player keys and the CSS only the SVG stage used.
+  `playerAt` and `Player.keys` stay for a player without a clip (an opponent
+  drawn as a marker); nothing draws one yet.
+- `mirrorScene` (in `src/anim/mirror.ts`) flips ball, zones and placements
+  for a left-hander. Tested: the mirrored figure meets the ball in every
+  placement of every scene, on the left side, with the racquet hand reflected
+  exactly. Not in the interface, as planned.
+- `src/anim/README.md` added; CLAUDE.md now describes the canvas stage and
+  says the animation rework is done. `#/dev/swing` stays as a dev page.
+- Checked at 390 px, light and dark: Today, skill page, Levels, Progress and
+  the dev page. No console errors, no horizontal scroll, every stage draws.
+- PLAN.md steps 1 to 8 are done. Still open from this log: the frame rate on
+  a real phone (Step 6).

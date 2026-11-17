@@ -6,9 +6,10 @@ before building anything: it holds the product decisions and the build order.
 ## State of the repo
 
 Build steps 1 and 2 are done (scaffold, content as data, straight drive end
-to end). The owner's reaction: rework the animations before step 3. That work
-is planned and tracked in `docs/animation/` (start with `HANDOFF.md`); read it
-before touching `src/anim/` or `src/ui/CourtStage.tsx`.
+to end). The animation rework that the owner asked for before step 3 is done:
+`docs/animation/PLAN.md` steps 1 to 8, logged in `docs/animation/DECISIONS.md`.
+Read `src/anim/README.md` before touching `src/anim/` or
+`src/ui/CourtStage.tsx`.
 
 - `npm run dev` / `npm run build` / `npm test`. Vite + React + TypeScript,
   `vite-plugin-pwa`, Dexie, Motion, Vitest. Hash routing, relative base, so
@@ -17,11 +18,16 @@ before touching `src/anim/` or `src/ui/CourtStage.tsx`.
   own words with SquashClub.org links. Drill targets are first-draft
   assumptions.
 - `src/anim/`: the declarative shot format. A scene is 3D ball waypoints
-  (x across, y from the front wall, z height), player keyframes, zones and
-  captions. `trajectory.ts` turns it into positions; `ui/CourtStage.tsx`
-  renders top and side views. A new renderer reads the same scenes.
-- `src/anim/scenes.test.ts` checks scenes are physically plausible and teach
-  the right thing (the good drive lands in the target, the misses do not).
+  (x across, y from the front wall, z height), a player with a pose clip
+  placed at the strike, zones and captions. A jointed mannequin is solved from
+  clip tracks with IK; four pinhole cameras (Auto sequence, Swing, Behind,
+  Above) project the same 3D world; `render/canvas.ts` draws it and
+  `ui/CourtStage.tsx` is the shell. A new renderer reads the same `FigurePose`
+  and scenes. See `src/anim/README.md`.
+- `src/anim/figure.test.ts` and `scenes.test.ts` check the figure (contact,
+  reach, planted feet, racquet speed, framing, the misses' faults) and that the
+  scenes teach the right thing (the good drive lands in the target, the misses
+  do not).
 - `src/data/`: Dexie database and `drillStats.ts` (typical = median of the
   last 5 sessions, level met, next target, trend), with tests.
 - `docs/reference-ladder.html` is the original single-file page, kept as a
@@ -47,8 +53,8 @@ Not yet confirmed by the owner; change it if there is a good reason.
 - Vite, React, TypeScript
 - `vite-plugin-pwa` for install and offline
 - IndexedDB through Dexie for local data
-- SVG for court animations, driven by a small declarative format (a shot is
-  data: path, bounce points, player positions, timing) so the renderer can be
+- Canvas 2D for court animations, driven by a small declarative format (a shot
+  is data: ball path, a pose clip, cameras, timing) so the renderer can be
   swapped later
 - Motion for interface animation
 - Vitest for logic such as readiness and focus selection

@@ -47,7 +47,7 @@ export function samplePath(points: BallPoint[], gravity: number, t0: number, t1:
 
 const ease = (k: number) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2)
 
-/** Player position at time t, eased between keyframes. */
+/** Position of a player without a clip (keys only, e.g. an opponent drawn as a marker), eased between keyframes. */
 export function playerAt(keys: PlayerKey[], t: number): { x: number; y: number } {
   if (t <= keys[0].t) return { x: keys[0].x, y: keys[0].y }
   const last = keys[keys.length - 1]
@@ -57,14 +57,6 @@ export function playerAt(keys: PlayerKey[], t: number): { x: number; y: number }
   const b = keys[i + 1]
   const k = ease((t - a.t) / (b.t - a.t))
   return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k }
-}
-
-/** Progress of a swing around its peak keyframe: -1 (backswing) .. 0 (contact) .. 1 (follow-through), or null. */
-export function swingAt(keys: PlayerKey[], t: number, window = 0.35): { side: 'forehand' | 'backhand'; phase: number } | null {
-  for (const k of keys) {
-    if (k.swing && Math.abs(t - k.t) <= window) return { side: k.swing, phase: (t - k.t) / window }
-  }
-  return null
 }
 
 /** The caption showing at time t. */

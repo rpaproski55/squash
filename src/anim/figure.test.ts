@@ -263,3 +263,24 @@ describe('the misses show their body fault (PLAN.md step 7)', () => {
     expect(reach('long')).toBeLessThanOrEqual(1.04)
   })
 })
+
+describe('left-handed (mirrorScene)', () => {
+  it('the mirrored figure still meets the ball, on the other side of the court, with the other hand', async () => {
+    const { mirrorScene } = await import('./mirror')
+    for (const scene of scenes) {
+      const m = mirrorScene(scene)
+      m.players.forEach((pl, i) =>
+        (pl.motion ?? []).forEach((p) => {
+          const b = ballAt(m.ball, p.at, m.gravity)!
+          const f = figureAt(pl, p.at)!
+          expect(V.len(V.sub(f.racquet.head, [b.x, b.y, b.z]))).toBeLessThan(0.03)
+          expect(b.x).toBeLessThan(1.5) // left side of the court
+          // the racquet hand is the right-hander's, reflected across the court
+          const r = figureAt(scene.players[i], p.at)!
+          expect(f.armR.hand[0]).toBeCloseTo(6.4 - r.armR.hand[0], 9)
+          expect(f.armR.hand[1]).toBeCloseTo(r.armR.hand[1], 9)
+        }),
+      )
+    }
+  })
+})

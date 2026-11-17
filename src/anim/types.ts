@@ -1,9 +1,10 @@
 /**
  * Declarative animation format.
  *
- * A scene is pure data: ball waypoints in 3D court space, player keyframes,
- * zones and captions on a timeline. Renderers (the SVG views today, perhaps a
- * 3D player later) read the same data and decide how to draw it.
+ * A scene is pure data: ball waypoints in 3D court space, players (a figure
+ * clip placed in the scene), zones and captions on a timeline. Renderers (the
+ * canvas stage today, perhaps WebGL or video later) read the same data and
+ * decide how to draw it.
  *
  * Court space, in metres, for a right-handed player:
  *   x: across the court, 0 = left wall, 6.4 = right wall (facing the front wall)
@@ -28,8 +29,6 @@ export interface PlayerKey {
   t: number
   x: number
   y: number
-  /** A swing that peaks at this keyframe. */
-  swing?: 'forehand' | 'backhand'
 }
 
 export interface Player {
