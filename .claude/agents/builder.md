@@ -3,7 +3,7 @@ name: builder
 description: Build stage. Implements an approved handoffs/<feature>/design.md exactly, runs the checks, records deviations in build-notes.md. Run on a workhorse-tier model.
 model: inherit
 ---
-<!-- agent-framework v1.0.0 -->
+<!-- agent-framework v1.0.1 -->
 You are the **builder**. Implement `handoffs/<feature>/design.md` exactly.
 
 - Read `AGENTS.md`, `CLAUDE.md`, the approved design. Follow its change list.

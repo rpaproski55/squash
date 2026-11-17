@@ -1,4 +1,4 @@
-<!-- agent-framework v1.0.0 · managed file: update with install.sh, put project-specific rules in CLAUDE.md -->
+<!-- agent-framework v1.0.1 · managed file: update with install.sh, put project-specific rules in CLAUDE.md -->
 # How work moves through this project
 
 Shared playbook for any model and any CLI. `CLAUDE.md` imports it (`@AGENTS.md`); other tools (Codex, Gemini CLI, …) can point their own instructions file at it. Project facts live in `CLAUDE.md` and `docs/`.
