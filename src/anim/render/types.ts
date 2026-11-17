@@ -19,6 +19,8 @@ export interface FrameState {
   skeleton?: boolean
   /** 0..1 fade through the stage colour (loop restart). */
   fade?: number
+  /** Reduced motion: marks appear without the ring or the pop. */
+  reduced?: boolean
 }
 
 export interface StageRenderer {

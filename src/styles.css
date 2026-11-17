@@ -369,3 +369,4 @@ h1, h2, h3, p { margin: 0; }
 /* ---------- Canvas stage ---------- */
 .stage-canvas { position: relative; background: var(--stage); overflow: hidden; }
 .stage-canvas > canvas { display: block; width: 100%; aspect-ratio: 358 / 400; touch-action: pan-y; }
+.chip.on { background: var(--ink); color: var(--bg); border-color: transparent; }

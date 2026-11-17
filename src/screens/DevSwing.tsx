@@ -2,14 +2,18 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { CAMERAS } from '../anim/camera'
 import { FOREHAND_DRIVE } from '../anim/figure/clips'
 import { placeFigure, solveFigure } from '../anim/figure/solve'
+import { strikeTime } from '../anim/render/canvas'
+import { STRAIGHT_DRIVE } from '../anim/scenes/straightDrive'
 import type { CameraId, Vec3 } from '../anim/types'
+import { Segmented } from '../ui/CourtStage'
 import { Icon } from '../ui/Icon'
 import { hashParams, href } from '../ui/router'
 import { useStageCanvas } from '../ui/useStageCanvas'
 
 /*
  * Dev page for the figure: #/dev/swing
- * Query: ?t=2.0 freezes on a scene time, &cam=quarterClose, &theme=dark, &skel=1.
+ * Query: ?t=2.0 freezes on a scene time, &cam=quarterClose, &theme=dark, &skel=1,
+ * &v=good|short|loose|long|none picks a straight drive variant (none = figure only).
  * window.__seek(t, cam?) jumps to a scene time for screenshots, as in the prototype.
  * Scene time matches the prototype: the strike is at 2.0.
  */
@@ -30,6 +34,9 @@ export function DevSwing() {
   const [skeleton, setSkeleton] = useState(q.get('skel') === '1')
   const [speed, setSpeed] = useState(1)
   const [shown, setShown] = useState(t.current)
+  const [variant, setVariant] = useState(q.get('v') ?? 'none')
+  const scene = STRAIGHT_DRIVE.variants.find((v) => v.id === variant)
+  const strike = scene ? strikeTime(scene) : STRIKE
 
   useEffect(() => {
     const theme = q.get('theme')
@@ -41,9 +48,9 @@ export function DevSwing() {
     const r = stage.renderer.current
     const colors = stage.colors.current
     if (!r || !colors) return
-    const tau = t.current - STRIKE
+    const tau = t.current - strike
     r.draw({
-      t: t.current, tau, camera: CAMERAS[cam], ball: CONTACT,
+      t: t.current, tau, camera: CAMERAS[cam], ball: CONTACT, scene,
       figures: [placeFigure(solveFigure(clip, tau), ANCHOR)],
       size: stage.size.current, colors, skeleton,
     })
@@ -72,7 +79,7 @@ export function DevSwing() {
       const dt = Math.min(0.05, (now - last) / 1000)
       last = now
       t.current += dt * speed
-      if (t.current > T1 + 0.4) t.current = T0
+      if (t.current > (scene ? scene.duration : T1) + 0.4) t.current = scene ? 0 : T0
       draw()
       if (now - lastShown > 100) { setShown(t.current); lastShown = now }
       raf = requestAnimationFrame(tick)
@@ -81,7 +88,7 @@ export function DevSwing() {
     return () => cancelAnimationFrame(raf)
     // draw reads cam and skeleton
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playing, speed, cam, skeleton])
+  }, [playing, speed, cam, skeleton, variant])
 
   const toggleTheme = () => {
     const root = document.documentElement
@@ -96,23 +103,36 @@ export function DevSwing() {
         <span className="title-m">Dev: swing</span>
       </div>
       <div className="screen stack">
+        <div className="chips">
+          {['none', ...STRAIGHT_DRIVE.variants.map((v) => v.id)].map((id) => (
+            <button key={id} className={`chip ${id === variant ? 'on' : ''}`} aria-pressed={id === variant} onClick={() => setVariant(id)}>
+              <span>{id}</span>
+            </button>
+          ))}
+        </div>
         <div className="card flush">
           <div className="stage-canvas">
             <canvas ref={stage.canvasRef} role="img" aria-label="Forehand drive figure" />
+            <div className="stage-view">
+              <Segmented
+                id="dev-cam" value={cam} onChange={(v) => setCam(v as CameraId)}
+                options={[{ value: 'quarterWide', label: 'Wide' }, { value: 'quarterClose', label: 'Close' }, { value: 'behind', label: 'Behind' }, { value: 'top', label: 'Above' }]}
+              />
+            </div>
           </div>
           <div className="controls">
             <button className="play-btn" onClick={() => setPlaying((p) => !p)} aria-label={playing ? 'Pause' : 'Play'}>
               <Icon name={playing ? 'pause' : 'play'} size={20} />
             </button>
             <input
-              className="scrub" type="range" min={T0} max={T1} step={0.005} value={shown} aria-label="Scene time"
+              className="scrub" type="range" min={scene ? 0 : T0} max={scene ? scene.duration : T1} step={0.005} value={shown} aria-label="Scene time"
               onChange={(e) => seek(Number(e.target.value))}
             />
             <button className="speed" onClick={() => setSpeed(speed === 1 ? 0.25 : 1)}>{speed === 1 ? '1×' : '¼×'}</button>
           </div>
         </div>
         <p className="faint">
-          Scene time {shown.toFixed(2)} s · contact time {(shown - STRIKE).toFixed(2)} s · camera {cam}
+          Scene time {shown.toFixed(2)} s · contact time {(shown - strike).toFixed(2)} s · camera {cam}
         </p>
         <div className="row">
           <button className="btn btn-ghost" onClick={() => setSkeleton((s) => !s)}>{skeleton ? 'Hide' : 'Show'} skeleton</button>

@@ -1,7 +1,8 @@
 import { isTopDown, makeProjector, type Projected, type Projector } from '../camera'
 import { COURT } from '../court'
+import { ballAt } from '../trajectory'
 import { BODY, LIMB_R } from '../figure/body'
-import type { FigurePose, Racquet, Vec3 } from '../types'
+import type { FigurePose, Racquet, Scene, Vec3 } from '../types'
 import { V } from '../vec'
 import type { StageColors } from './colors'
 import type { FrameState, StageRenderer } from './types'
@@ -49,13 +50,20 @@ export class CanvasStageRenderer implements StageRenderer {
     ctx.fillRect(0, 0, W, H)
     this.P = makeProjector(f.camera, W, H)
     this.drawCourt(f.camera.pos)
+    if (f.scene) this.drawZones(f.scene, f.tau)
     for (const fig of f.figures) this.drawGroundShadow(fig)
-    const ball = f.ball ?? null
+    const sc = f.scene
+    const strike = sc ? strikeTime(sc) : 0
+    const ball = sc ? toV(ballAt(sc.ball, f.t, sc.gravity)) : (f.ball ?? null)
+    if (sc && ball) this.drawShotPathAndShadows(sc, f.t, strike, ball)
+    // ball in front of or behind the figure, by camera depth
     const pelvisDepth = f.figures[0] ? this.P.toCam(f.figures[0].pelvis)[2] : Infinity
-    const ballBehind = ball && this.P.toCam(ball)[2] > pelvisDepth
-    if (ball && ballBehind) this.drawBall(ball)
+    const ballBehind = !!ball && this.P.toCam(ball)[2] > pelvisDepth
+    const drawBall = () => (sc ? this.drawBallAndTrail(sc, f.t) : ball && this.drawBall(ball))
+    if (ballBehind) drawBall()
     for (const fig of f.figures) this.drawFigure(fig, !!f.skeleton)
-    if (ball && !ballBehind) this.drawBall(ball)
+    if (!ballBehind) drawBall()
+    if (sc) this.drawMarks(sc, f.t, !!f.reduced)
     if (f.fade && f.fade > 0) {
       ctx.globalAlpha = f.fade
       ctx.fillStyle = this.c.stage
@@ -339,7 +347,81 @@ export class CanvasStageRenderer implements StageRenderer {
     }
   }
 
-  /* ---------- ball (step 1: just the ball, no trail or shadow yet) ---------- */
+  /* ---------- zones ---------- */
+  private drawZones(scene: Scene, tau: number) {
+    const { c } = this
+    const fromTop = isTopDown(this.P.cam)
+    for (const z of scene.zones) {
+      // the wall target breathes while the "aim" caption shows; the floor target while the ball is coming back
+      const active = z.surface === 'front' ? tau > 0.05 && tau < 0.7 : tau > 0.6 && tau < 1.6
+      const pulse = active ? 0.5 + 0.5 * Math.sin(tau * 9) : 0
+      let pts: Vec3[]
+      if (z.surface === 'floor') pts = [[z.x, z.y, 0.004], [z.x + z.w, z.y, 0.004], [z.x + z.w, z.y + z.h, 0.004], [z.x, z.y + z.h, 0.004]]
+      else if (fromTop) pts = [[z.x, -0.22, 0], [z.x + z.w, -0.22, 0], [z.x + z.w, -0.04, 0], [z.x, -0.04, 0]]
+      else pts = [[z.x, 0, z.z], [z.x + z.w, 0, z.z], [z.x + z.w, 0, z.z + z.h], [z.x, 0, z.z + z.h]]
+      this.poly(pts, c.target, c['target-edge'], 1.5 + pulse * 1.5)
+    }
+  }
+
+  /* ---------- ball ---------- */
+  /** Dotted path since the strike, floor shadow, and a wall shadow near the right wall (shows tightness). */
+  private drawShotPathAndShadows(scene: Scene, t: number, strike: number, b: Vec3) {
+    const { ctx, c } = this
+    if (t > strike) {
+      ctx.beginPath()
+      let started = false
+      for (let s = strike; s <= t; s += 1 / 40) {
+        const q = this.pj(toV(ballAt(scene.ball, s, scene.gravity))!)
+        if (started) ctx.lineTo(q.x, q.y)
+        else ctx.moveTo(q.x, q.y)
+        started = true
+      }
+      ctx.strokeStyle = c[scene.tone ?? 'good']
+      ctx.globalAlpha = 0.55
+      ctx.lineWidth = 2
+      ctx.setLineDash([2, 6])
+      ctx.lineCap = 'round'
+      ctx.stroke()
+      ctx.setLineDash([])
+      ctx.globalAlpha = 1
+    }
+    const sh = this.pj([b[0], b[1], 0.003])
+    const sr = Math.max(2, 0.07 * sh.scale)
+    ctx.beginPath()
+    ctx.ellipse(sh.x, sh.y, sr * 1.3, sr * 0.6, 0, 0, 7)
+    ctx.fillStyle = c.shadow
+    ctx.fill()
+    const gap = COURT.width - b[0]
+    if (gap < 1.2 && this.P.cam.pos[0] < COURT.width && !isTopDown(this.P.cam)) {
+      const ws = this.pj([COURT.width, b[1], b[2]])
+      ctx.globalAlpha = Math.min(1, (1.2 - gap) / 0.8)
+      ctx.beginPath()
+      ctx.arc(ws.x, ws.y, Math.max(2, 0.06 * ws.scale), 0, 7)
+      ctx.fillStyle = c.shadow
+      ctx.fill()
+      ctx.globalAlpha = 1
+    }
+  }
+
+  /** Comet trail and the ball. */
+  private drawBallAndTrail(scene: Scene, t: number) {
+    const { ctx, c } = this
+    const b = toV(ballAt(scene.ball, t, scene.gravity))
+    if (!b) return
+    for (let i = 10; i >= 1; i--) {
+      const p = toV(ballAt(scene.ball, t - i * 0.018, scene.gravity))
+      if (!p) continue
+      const q = this.pj(p)
+      ctx.globalAlpha = 0.5 * (1 - i / 11)
+      ctx.beginPath()
+      ctx.arc(q.x, q.y, Math.max(2.2, 0.045 * q.scale) * (1 - i / 16), 0, 7)
+      ctx.fillStyle = c.ball
+      ctx.fill()
+    }
+    ctx.globalAlpha = 1
+    this.drawBall(b)
+  }
+
   private drawBall(b: Vec3) {
     const { ctx, c } = this
     const q = this.pj(b)
@@ -352,4 +434,55 @@ export class CanvasStageRenderer implements StageRenderer {
     ctx.strokeStyle = c['ball-edge']
     ctx.stroke()
   }
+
+  /* ---------- marks: ring and check or cross badge at a marked wall hit or bounce ---------- */
+  private drawMarks(scene: Scene, t: number, reduced: boolean) {
+    const { ctx, c } = this
+    for (const p of scene.ball) {
+      if (!p.mark || p.mark === 'info' || t < p.t) continue
+      const age = t - p.t
+      const q = this.pj([p.x, p.y, p.z + 0.004])
+      const color = c[p.mark]
+      if (age < 0.5 && !reduced) {
+        ctx.globalAlpha = 1 - age / 0.5
+        ctx.beginPath()
+        ctx.arc(q.x, q.y, 8 + age * 44, 0, 7)
+        ctx.strokeStyle = color
+        ctx.lineWidth = 2.5
+        ctx.stroke()
+        ctx.globalAlpha = 1
+      }
+      const pop = reduced ? 1 : Math.min(1, age / 0.18)
+      const s = 9 * (1 + 0.35 * Math.sin(pop * Math.PI)) * pop
+      ctx.beginPath()
+      ctx.arc(q.x, q.y, s, 0, 7)
+      ctx.fillStyle = color
+      ctx.fill()
+      ctx.strokeStyle = c.surface
+      ctx.lineWidth = 2
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.strokeStyle = '#fff'
+      ctx.lineWidth = 2
+      ctx.lineCap = 'round'
+      if (p.mark === 'good') {
+        ctx.moveTo(q.x - s * 0.42, q.y)
+        ctx.lineTo(q.x - s * 0.1, q.y + s * 0.32)
+        ctx.lineTo(q.x + s * 0.45, q.y - s * 0.3)
+      } else {
+        ctx.moveTo(q.x - s * 0.35, q.y - s * 0.35)
+        ctx.lineTo(q.x + s * 0.35, q.y + s * 0.35)
+        ctx.moveTo(q.x + s * 0.35, q.y - s * 0.35)
+        ctx.lineTo(q.x - s * 0.35, q.y + s * 0.35)
+      }
+      ctx.stroke()
+    }
+  }
+}
+
+const toV = (p: { x: number; y: number; z: number } | null): Vec3 | null => (p ? [p.x, p.y, p.z] : null)
+
+/** Scene time of the first strike (the scene's contact moment). */
+export function strikeTime(scene: Scene): number {
+  return scene.ball.find((p) => p.event === 'strike')?.t ?? 0
 }

@@ -61,12 +61,17 @@ export interface Scene {
   players: Player[]
   zones: Zone[]
   captions: Caption[]
+  /** Colour of the shot's dotted path: 'good' for the model version, 'bad' for a miss. */
+  tone?: 'good' | 'bad'
+  /** Camera sequence and pace; falls back to the SceneSet's, then to DEFAULT_DIRECTOR. */
+  director?: Director
   /** Optional on-court counter (drills). */
   counter?: { t: number; value: number; tone?: 'good' | 'bad' }[]
 }
 
 export interface SceneSet {
   id: string
+  director?: Director
   /** Variants, the first is the default ("the good version"). */
   variants: Scene[]
 }
