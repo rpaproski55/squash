@@ -1,0 +1,804 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Straight drive: figure and camera prototype</title>
+<style>
+  :root {
+    --bg: #fbf8f4; --surface: #ffffff; --surface-2: #f4efe8; --ink: #1d2320; --ink-soft: #6a716c; --line: #ebe4da;
+    --accent: #c8492a; --accent-ink: #ffffff; --accent-soft: #fbe9e2;
+    --floor: #f3e5cd; --floor-edge: #e6d3b3; --wall: #fffdf9; --wall-side: #f6f0e6; --court-line: #cf4b37;
+    --ball: #f4c443; --ball-edge: #6b5208; --good: #23845a; --bad: #cc3d3d;
+    --target: rgba(35,132,90,0.20); --target-edge: rgba(35,132,90,0.60);
+    /* proposed new tokens */
+    --figure: #2f3a36; --figure-far: #66716c; --figure-edge: #fffdf9; --racquet: #1d2320; --stage: #efe8dd; --shadow: rgba(60,40,10,0.20);
+  }
+  :root[data-theme="dark"] {
+    --bg: #131614; --surface: #1b1f1d; --surface-2: #242927; --ink: #eef1ee; --ink-soft: #9aa39d; --line: #2d3330;
+    --accent: #f07c58; --accent-ink: #1c0d07; --accent-soft: #3a221a;
+    --floor: #2c2721; --floor-edge: #3a332b; --wall: #1f2220; --wall-side: #252927; --court-line: #e0705e;
+    --ball: #f6cd52; --ball-edge: #2a2003; --good: #5fcf94; --bad: #ff8a80;
+    --target: rgba(95,207,148,0.18); --target-edge: rgba(95,207,148,0.55);
+    --figure: #e9e3d8; --figure-far: #a39c90; --figure-edge: #1f2220; --racquet: #eef1ee; --stage: #171a18; --shadow: rgba(0,0,0,0.40);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.4 ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 390px; margin: 0 auto; padding: 12px 16px 28px; }
+  h1 { font-size: 17px; margin: 4px 0 10px; text-align: center; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 12px; }
+  .chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { flex: none; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px;
+    padding: 8px 14px; font: inherit; font-weight: 600; }
+  .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .stage { position: relative; border-radius: 14px; overflow: hidden; background: var(--stage); }
+  canvas { display: block; width: 100%; aspect-ratio: 358 / 400; touch-action: pan-y; }
+  .cams { position: absolute; top: 8px; left: 8px; display: flex; background: color-mix(in srgb, var(--surface) 88%, transparent);
+    border-radius: 999px; padding: 3px; gap: 2px; }
+  .cams button { border: 0; background: transparent; color: var(--ink-soft); font: inherit; font-size: 13px; font-weight: 600;
+    padding: 6px 11px; border-radius: 999px; }
+  .cams button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+  .caption { margin-top: 10px; min-height: 44px; display: flex; align-items: center;
+    justify-content: center; text-align: center; background: var(--surface-2); border-radius: 14px;
+    padding: 8px 12px; font-weight: 700; transition: opacity .25s, transform .25s; }
+  .caption.good { color: var(--good); } .caption.bad { color: var(--bad); }
+  .caption.swap { opacity: 0; transform: translateY(4px); }
+  .controls { display: flex; align-items: center; gap: 12px; padding-top: 12px; }
+  .play { width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--ink); color: var(--bg); font-size: 16px; }
+  .speed { border: 0; background: var(--surface-2); color: var(--ink); border-radius: 999px; padding: 9px 13px; font: inherit; font-weight: 700; }
+  input[type=range] { flex: 1; accent-color: var(--accent); }
+  .note { color: var(--ink-soft); font-size: 13px; margin: 12px 4px 0; }
+  .row { display: flex; gap: 8px; margin-top: 10px; }
+  .row button { flex: 1; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 12px; padding: 9px; font: inherit; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Straight drive</h1>
+  <div class="card">
+    <div class="chips" id="variants"></div>
+    <div class="stage">
+      <canvas id="c" role="img" aria-label="Animated straight drive"></canvas>
+      <div class="cams" id="cams"></div>
+    </div>
+    <div class="caption" id="caption"></div>
+    <div class="controls">
+      <button class="play" id="play" aria-label="Pause">❚❚</button>
+      <input type="range" id="scrub" min="0" max="1000" value="0" aria-label="Timeline">
+      <button class="speed" id="speed">1×</button>
+    </div>
+  </div>
+  <div class="row">
+    <button id="theme">Light / dark</button>
+    <button id="skel">Skeleton overlay</button>
+  </div>
+  <p class="note">Prototype for the build session. All motion comes from the data in the <code>core</code> script: a pose clip
+  (tracks of numbers), a pinhole camera, a director track and a pace track. Nothing is loaded from the network.</p>
+</main>
+
+<script id="core">
+/* =====================================================================
+   CORE: data and pure maths. No DOM. The build session ports this block
+   to src/anim/ (see ARCHITECTURE.md). Units: metres, seconds, degrees.
+   Court space: x across (0 left wall, 6.4 right wall), y depth
+   (0 front wall, 9.75 back wall), z up.
+   ===================================================================== */
+const COURT = { width: 6.4, length: 9.75, frontOut: 4.57, serviceLine: 1.78, tin: 0.48, backOut: 2.13, shortLine: 5.44, boxSize: 1.6 };
+const BOX_BACK = COURT.shortLine + COURT.boxSize;
+
+/* ---------- vectors ---------- */
+const V = {
+  add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]],
+  sub: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]],
+  mul: (a, s) => [a[0] * s, a[1] * s, a[2] * s],
+  dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2],
+  cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
+  len: (a) => Math.hypot(a[0], a[1], a[2]),
+  norm: (a) => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; },
+  lerp: (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k],
+};
+const RAD = Math.PI / 180;
+
+/* ---------- track sampling ----------
+   A track is [[t, value], ...] sorted by t. value is a number or an array.
+   Sampling is a monotone cubic (Fritsch-Carlson tangents) per component:
+   smooth through keys, never overshoots, and two equal neighbouring keys
+   give an exact hold (a planted foot stays planted). */
+function sampleTrack(track, t) {
+  const n = track.length;
+  if (t <= track[0][0]) return track[0][1];
+  if (t >= track[n - 1][0]) return track[n - 1][1];
+  let i = 0; while (i < n - 2 && track[i + 1][0] <= t) i++;
+  const comp = (get) => {
+    const t0 = track[i][0], t1 = track[i + 1][0], h = t1 - t0;
+    const p0 = get(i), p1 = get(i + 1), d = (p1 - p0) / h;
+    const slope = (j) => { // tangent at key j
+      if (j === 0 || j === n - 1) return 0;
+      const a = (get(j) - get(j - 1)) / (track[j][0] - track[j - 1][0]);
+      const b = (get(j + 1) - get(j)) / (track[j + 1][0] - track[j][0]);
+      if (a * b <= 0) return 0;
+      const ha = track[j][0] - track[j - 1][0], hb = track[j + 1][0] - track[j][0];
+      return (3 * (ha + hb)) / ((2 * hb + ha) / a + (hb + 2 * ha) / b); // weighted harmonic mean
+    };
+    const m0 = slope(i), m1 = slope(i + 1), k = (t - t0) / h, k2 = k * k, k3 = k2 * k;
+    void d;
+    return (2 * k3 - 3 * k2 + 1) * p0 + (k3 - 2 * k2 + k) * h * m0 + (-2 * k3 + 3 * k2) * p1 + (k3 - k2) * h * m1;
+  };
+  const v = track[i][1];
+  if (typeof v === 'number') return comp((j) => track[j][1]);
+  return v.map((_, c) => comp((j) => track[j][1][c]));
+}
+/** Sample a track of unit vectors along great-circle arcs.
+    Component-wise cubics slow a fast rotation down at every key, which makes a swing stutter at contact.
+    Here the total angle travelled is interpolated as one smooth scalar and each segment is a slerp, so the
+    angular speed is continuous. A key tagged 'peak' (third element) is where the rotation is fastest. */
+function sampleArc(track, t) {
+  const n = track.length, u = (i) => V.norm(track[i][1]);
+  if (t <= track[0][0]) return u(0);
+  if (t >= track[n - 1][0]) return u(n - 1);
+  const ang = (a, b) => Math.acos(Math.max(-1, Math.min(1, V.dot(a, b))));
+  const cum = [0]; for (let i = 1; i < n; i++) cum.push(cum[i - 1] + ang(u(i - 1), u(i)));
+  let i = 0; while (i < n - 2 && track[i + 1][0] <= t) i++;
+  const slope = (j) => {
+    if (j === 0 || j === n - 1) return 0;
+    const ha = track[j][0] - track[j - 1][0], hb = track[j + 1][0] - track[j][0];
+    const a = (cum[j] - cum[j - 1]) / ha, b = (cum[j + 1] - cum[j]) / hb;
+    if (a <= 0 || b <= 0) return 0;
+    if (track[j][2] === 'peak') return Math.min(1.5 * Math.max(a, b), 3 * Math.min(a, b));
+    return (3 * (ha + hb)) / ((2 * hb + ha) / a + (hb + 2 * ha) / b);
+  };
+  const t0 = track[i][0], h = track[i + 1][0] - t0, k = (t - t0) / h, k2 = k * k, k3 = k2 * k;
+  const th = (2 * k3 - 3 * k2 + 1) * cum[i] + (k3 - 2 * k2 + k) * h * slope(i) + (-2 * k3 + 3 * k2) * cum[i + 1] + (k3 - k2) * h * slope(i + 1);
+  const seg = cum[i + 1] - cum[i]; if (seg < 1e-6) return u(i);
+  const f = Math.max(0, Math.min(1, (th - cum[i]) / seg)), a = u(i), b = u(i + 1), so = Math.sin(seg);
+  if (so < 1e-6) return V.norm(V.lerp(a, b, f));
+  return V.add(V.mul(a, Math.sin((1 - f) * seg) / so), V.mul(b, Math.sin(f * seg) / so));
+}
+/** Piecewise-linear sample (used for pace). */
+function sampleLinear(track, t) {
+  const n = track.length;
+  if (t <= track[0][0]) return track[0][1];
+  if (t >= track[n - 1][0]) return track[n - 1][1];
+  let i = 0; while (i < n - 2 && track[i + 1][0] <= t) i++;
+  const k = (t - track[i][0]) / (track[i + 1][0] - track[i][0]);
+  return track[i][1] + (track[i + 1][1] - track[i][1]) * k;
+}
+
+/* ---------- ball (identical maths to src/anim/trajectory.ts) ---------- */
+function ballAt(points, t, g) {
+  if (!points.length || t < points[0].t) return null;
+  const last = points[points.length - 1];
+  if (t >= last.t) return [last.x, last.y, last.z];
+  let i = 0; while (i < points.length - 2 && points[i + 1].t <= t) i++;
+  const a = points[i], b = points[i + 1], T = b.t - a.t, s = t - a.t, k = T === 0 ? 1 : s / T;
+  const x = a.x + (b.x - a.x) * k, y = a.y + (b.y - a.y) * k;
+  if (b.event === 'roll' || T === 0) return [x, y, a.z + (b.z - a.z) * k];
+  const vz = (b.z - a.z + 0.5 * g * T * T) / T;
+  return [x, y, a.z + vz * s - 0.5 * g * s * s];
+}
+
+/* ---------- figure ---------- */
+const BODY = {
+  hipHalf: 0.10, thigh: 0.43, shin: 0.42, ankle: 0.08, footHeel: 0.06, footToe: 0.18,
+  spine: 0.48, shoulderHalf: 0.19, neck: 0.23, headR: 0.105,
+  upperArm: 0.29, forearm: 0.26,
+  racquetReach: 0.50, // wrist to centre of the racquet head
+  headLong: 0.115, headWide: 0.09, // racquet head half-axes
+  stepLift: 0.13,
+};
+
+/* The clip. Times are seconds relative to contact (0 = strike), in scene
+   time. Positions are in the clip frame: origin on the floor directly
+   under the contact point, u toward the side wall being hit along, v toward
+   the back wall, z up. Yaw: 0 faces the front wall, 90 faces the side wall.
+   Hands, racquet direction, racquet face and elbow hints are in the chest
+   frame [right, forward, up] with the origin midway between the shoulders. */
+const FOREHAND_DRIVE = {
+  id: 'forehand-drive-classic', hand: 'right', contactHeight: 0.55, start: -2.0, end: 1.9,
+  tracks: {
+    pelvisOffset: [[-2.00, [0, 0]], [-0.45, [0, 0]], [-0.20, [0.02, -0.07]], [0.40, [0.02, -0.07]], [0.75, [0, 0]], [1.90, [0, 0]]],
+    pelvisHeight: [[-2.00, 0.90], [-1.86, 0.83], [-1.50, 0.80], [-0.80, 0.79], [-0.45, 0.77], [-0.20, 0.72], [0.00, 0.70], [0.40, 0.72], [0.75, 0.79], [1.45, 0.82], [1.80, 0.90]],
+    hipYaw: [[-2.00, 0], [-1.86, 0], [-1.45, 70], [-0.80, 95], [-0.30, 100], [0.00, 72], [0.20, 50], [0.45, 36], [0.90, 30], [1.50, 6], [1.80, 0]],
+    chestYaw: [[-2.00, 0], [-1.86, 4], [-1.45, 80], [-0.80, 105], [-0.34, 118], [-0.13, 100], [0.00, 75], [0.14, 48], [0.40, 22], [0.90, 24], [1.50, 5], [1.80, 0]],
+    lean: [[-2.00, 16], [-1.50, 20], [-0.80, 24], [-0.30, 32], [0.00, 38], [0.40, 26], [0.90, 20], [1.80, 16]],
+    footL: [
+      [-2.00, [-2.65, -2.45]], [-1.52, [-2.65, -2.45]], [-1.05, [-1.80, -0.60]], [-0.70, [-1.80, -0.60]],
+      [-0.22, [-0.60, 0.02]], [0.42, [-0.60, 0.02]], [0.80, [-1.55, -0.62]], [1.02, [-1.55, -0.62]],
+      [1.45, [-2.65, -2.45]], [1.90, [-2.65, -2.45]],
+    ],
+    footR: [
+      [-2.00, [-2.15, -2.45]], [-1.78, [-2.15, -2.45]], [-1.42, [-2.00, -1.60]], [-1.15, [-2.00, -1.60]],
+      [-0.62, [-1.42, 0.50]], [0.70, [-1.42, 0.50]], [1.12, [-1.98, -1.50]], [1.36, [-1.98, -1.50]],
+      [1.78, [-2.15, -2.45]], [1.90, [-2.15, -2.45]],
+    ],
+    toeL: [[-2.00, -8], [-1.52, -8], [-1.05, 95], [-0.70, 95], [-0.22, 85], [0.42, 85], [0.80, 40], [1.02, 40], [1.45, -8], [1.90, -8]],
+    toeR: [[-2.00, 8], [-1.78, 8], [-1.42, 100], [-1.15, 100], [-0.62, 108], [0.70, 108], [1.12, 45], [1.36, 45], [1.78, 8], [1.90, 8]],
+    handR: [
+      [-2.00, [0.20, 0.30, -0.24]], [-1.80, [0.22, 0.30, -0.22]], [-1.30, [0.36, 0.14, -0.02]],
+      [-0.80, [0.42, -0.04, 0.06]], [-0.34, [0.47, -0.16, 0.04]], [-0.13, [0.30, 0.12, -0.26]],
+      [0.00, [-0.052, 0.244, -0.398]], // solved: racquet head centre on the ball
+      [0.14, [-0.15, 0.40, -0.14]], [0.40, [-0.14, 0.28, 0.24]], [0.90, [0.16, 0.30, -0.10]], [1.80, [0.20, 0.30, -0.24]],
+    ],
+    racquetDir: [
+      [-2.00, [-0.25, 0.30, 0.92]], [-1.30, [0.05, -0.10, 0.99]], [-0.80, [-0.20, -0.25, 0.95]],
+      [-0.34, [-0.40, -0.40, 0.82]], [-0.13, [0.78, 0.02, 0.62]],
+      [0.00, [0.250, 0.933, -0.260], 'peak'], // solved: shaft points at the side wall, head just below the wrist
+      [0.14, [-0.80, 0.25, 0.55]], [0.40, [-0.40, -0.30, 0.87]], [0.90, [-0.15, 0.15, 0.98]], [1.80, [-0.25, 0.30, 0.92]],
+    ],
+    racquetFace: [ // normal of the strings
+      [-2.00, [0.30, 0.95, 0.00]], [-0.80, [0.90, 0.40, 0.10]], [-0.34, [0.95, 0.25, 0.10]], [-0.13, [-0.55, 0.45, 0.70]],
+      [0.00, [-0.920, 0.309, 0.240], 'peak'], // solved: faces the front wall, slightly open
+      [0.14, [-0.50, -0.60, -0.60]], [0.40, [0.60, -0.80, 0.00]], [0.90, [0.30, 0.95, 0.00]], [1.80, [0.30, 0.95, 0.00]],
+    ],
+    elbowR: [
+      [-2.00, [0.50, -0.30, -0.80]], [-0.80, [0.60, -0.55, -0.55]], [-0.34, [0.55, -0.70, -0.45]], [-0.13, [0.35, -0.60, -0.70]],
+      [0.00, [0.60, -0.30, -0.70]], [0.14, [0.50, 0.20, -0.85]], [0.40, [0.45, 0.50, -0.75]], [0.90, [0.50, -0.20, -0.85]], [1.80, [0.50, -0.30, -0.80]],
+    ],
+    handL: [
+      [-2.00, [-0.10, 0.34, -0.20]], [-1.80, [-0.14, 0.33, -0.20]], [-1.30, [-0.32, 0.22, -0.22]], [-0.80, [-0.34, 0.30, -0.12]],
+      [-0.34, [-0.30, 0.40, -0.06]], [0.00, [-0.40, 0.10, -0.16]], [0.40, [-0.36, -0.04, -0.28]], [0.90, [-0.26, 0.20, -0.24]], [1.80, [-0.10, 0.34, -0.20]],
+    ],
+  },
+};
+
+/** Two-bone IK. Returns the middle joint; if the target is out of reach the end is pulled in. */
+function ik2(root, target, a, b, pole) {
+  let d = V.sub(target, root), L = V.len(d);
+  const max = (a + b) * 0.999, min = Math.abs(a - b) + 1e-4;
+  const dir = V.norm(d);
+  const Lc = Math.min(max, Math.max(min, L));
+  const end = Lc === L ? target : V.add(root, V.mul(dir, Lc));
+  const x = (a * a - b * b + Lc * Lc) / (2 * Lc), h = Math.sqrt(Math.max(0, a * a - x * x));
+  let perp = V.sub(pole, V.mul(dir, V.dot(pole, dir)));
+  perp = V.len(perp) < 1e-6 ? [0, 0, 1] : V.norm(perp);
+  return { mid: V.add(V.add(root, V.mul(dir, x)), V.mul(perp, h)), end, stretch: L / (a + b) };
+}
+
+/** Foot position with automatic lift while it travels between two planted keys. */
+function footAt(track, t) {
+  const p = sampleTrack(track, t);
+  let lift = 0;
+  for (let i = 0; i < track.length - 1; i++) {
+    const [t0, a] = track[i], [t1, b] = track[i + 1];
+    if (t > t0 && t < t1) {
+      const dist = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (dist > 1e-6) lift = BODY.stepLift * Math.min(1, dist / 0.8) * Math.sin(Math.PI * (t - t0) / (t1 - t0));
+    }
+  }
+  return [p[0], p[1], lift];
+}
+
+/** Solve the whole skeleton at clip time tau. Returns joints in the clip frame (u, v, z). */
+function solveFigure(clip, tau) {
+  const T = clip.tracks, B = BODY;
+  const t = Math.min(clip.end, Math.max(clip.start, tau));
+  const fl0 = sampleTrack(T.footL, t), fr0 = sampleTrack(T.footR, t), off = sampleTrack(T.pelvisOffset, t);
+  // the pelvis rides midway between the feet (plus a keyed offset), so the legs can always reach
+  const pelvis = [(fl0[0] + fr0[0]) / 2 + off[0], (fl0[1] + fr0[1]) / 2 + off[1], sampleTrack(T.pelvisHeight, t)];
+  const hy = sampleTrack(T.hipYaw, t) * RAD, cy = sampleTrack(T.chestYaw, t) * RAD, lean = sampleTrack(T.lean, t) * RAD;
+  const fwd = (a) => [Math.sin(a), -Math.cos(a), 0], right = (a) => [Math.cos(a), Math.sin(a), 0];
+  const up = [0, 0, 1];
+  const hipR_ = right(hy), cF = fwd(cy), cR = right(cy);
+  const chest = V.add(pelvis, V.add(V.mul(cF, Math.sin(lean) * B.spine), V.mul(up, Math.cos(lean) * B.spine)));
+  const head = V.add(chest, V.add(V.mul(cF, Math.sin(lean * 0.6) * B.neck), V.mul(up, Math.cos(lean * 0.6) * B.neck)));
+  const fromChest = (r) => V.add(chest, V.add(V.add(V.mul(cR, r[0]), V.mul(cF, r[1])), V.mul(up, r[2])));
+  const dirFromChest = (r) => V.norm(V.add(V.add(V.mul(cR, r[0]), V.mul(cF, r[1])), V.mul(up, r[2])));
+  const shoulderR = V.add(chest, V.mul(cR, B.shoulderHalf)), shoulderL = V.add(chest, V.mul(cR, -B.shoulderHalf));
+  const hipR = V.add(pelvis, V.mul(hipR_, B.hipHalf)), hipL = V.add(pelvis, V.mul(hipR_, -B.hipHalf));
+
+  const leg = (hip, footTrack, toeTrack) => {
+    const f = footAt(footTrack, t), toe = sampleTrack(toeTrack, t) * RAD, tf = fwd(toe);
+    const ankleT = [f[0], f[1], f[2] + B.ankle];
+    const pole = V.norm(V.add(V.add(V.mul(fwd(hy), 0.6), V.mul(tf, 0.6)), [0, 0, 0.25]));
+    const s = ik2(hip, ankleT, B.thigh, B.shin, pole);
+    const drop = f[2] > 0.02 ? -0.04 : 0; // toes hang a little while the foot is in the air
+    return { hip, knee: s.mid, ankle: s.end, heel: V.add(V.sub(s.end, V.mul(tf, B.footHeel)), [0, 0, -B.ankle + 0.03]),
+      toe: V.add(V.add(s.end, V.mul(tf, B.footToe)), [0, 0, -B.ankle + 0.03 + drop]), stretch: s.stretch };
+  };
+  const legL = leg(hipL, T.footL, T.toeL), legR = leg(hipR, T.footR, T.toeR);
+
+  const aR = ik2(shoulderR, fromChest(sampleTrack(T.handR, t)), B.upperArm, B.forearm, dirFromChest(sampleArc(T.elbowR, t)));
+  const aL = ik2(shoulderL, fromChest(sampleTrack(T.handL, t)), B.upperArm, B.forearm, dirFromChest([-0.5, -0.3, -0.8]));
+  const rDir = dirFromChest(sampleArc(T.racquetDir, t));
+  let face = dirFromChest(sampleArc(T.racquetFace, t));
+  face = V.norm(V.sub(face, V.mul(rDir, V.dot(face, rDir)))); // keep the face normal square to the shaft
+  const hand = aR.end;
+  return {
+    pelvis, chest, head, shoulderL, shoulderR, hipL, hipR, legL, legR,
+    armR: { shoulder: shoulderR, elbow: aR.mid, hand, stretch: aR.stretch },
+    armL: { shoulder: shoulderL, elbow: aL.mid, hand: aL.end, stretch: aL.stretch },
+    racquet: { hand, dir: rDir, face, head: V.add(hand, V.mul(rDir, B.racquetReach)), butt: V.sub(hand, V.mul(rDir, 0.07)) },
+  };
+}
+
+/** Map the solved figure from the clip frame into court space. mirror = true flips it for a left-hander. */
+function placeFigure(fig, anchor, mirror) {
+  const s = mirror ? -1 : 1;
+  const f = (p) => [anchor.x + s * p[0], anchor.y + p[1], p[2]];
+  const d = (p) => [s * p[0], p[1], p[2]];
+  const out = {};
+  for (const k in fig) {
+    const v = fig[k];
+    if (Array.isArray(v)) out[k] = f(v);
+    else { out[k] = {}; for (const j in v) out[k][j] = Array.isArray(v[j]) ? ((j === 'dir' || j === 'face') ? d(v[j]) : f(v[j])) : v[j]; }
+  }
+  return out;
+}
+
+/* ---------- cameras ----------
+   One pinhole model for every view. fov is the horizontal field of view in
+   degrees. up defaults to +z; the top view uses up = -y so the front wall is
+   at the top of the screen. */
+const CAMERAS = {
+  quarterWide:  { pos: [12.7, 14.5, 2.3], target: [4.3, 7.4, 0.85], fov: 27 },
+  quarterClose: { pos: [11.8, 14.1, 1.9], target: [4.9, 8.3, 0.92], fov: 20 },
+  behind:       { pos: [4.6, 17.0, 3.9], target: [5.0, 0, -0.4], fov: 30 },
+  top:          { pos: [3.2, 4.55, 30], target: [3.2, 4.55, 0], fov: 18.5, up: [0, -1, 0] },
+};
+/** Blend two cameras. k is 0..1 (already eased). The look-at point trails the position (k squared) so the
+    subject stays in frame while the camera travels. */
+function lerpCam(a, b, k) {
+  return { pos: V.lerp(a.pos, b.pos, k), target: V.lerp(a.target, b.target, k * k), fov: a.fov + (b.fov - a.fov) * k, up: a.up || b.up };
+}
+/** Build a projector for a camera and a viewport of w by h pixels. */
+function makeProjector(cam, w, h) {
+  const fw = V.norm(V.sub(cam.target, cam.pos));
+  // Court space is left-handed (x right, y toward the viewer at the back, z up), so screen-right is up x forward.
+  const rt = V.norm(V.cross(cam.up || [0, 0, 1], fw));
+  const upv = V.cross(fw, rt);
+  const focal = (w / 2) / Math.tan(cam.fov * RAD / 2);
+  const toCam = (p) => { const d = V.sub(p, cam.pos); return [V.dot(d, rt), V.dot(d, upv), V.dot(d, fw)]; };
+  const project = (p) => {
+    const c = toCam(p); const z = Math.max(c[2], 0.05);
+    return { x: w / 2 + focal * c[0] / z, y: h / 2 - focal * c[1] / z, depth: c[2], scale: focal / z };
+  };
+  return { project, toCam, focal, cam };
+}
+
+/* ---------- the directed sequence ----------
+   Camera keys and pace keys, in seconds relative to the strike.
+   ease: 'cut' jumps, 'move' eases in and out from the previous key. */
+const DIRECTOR = {
+  camera: [
+    { t: -2.00, cam: 'quarterWide' },
+    { t: -1.55, cam: 'quarterWide' },
+    { t: -0.62, cam: 'quarterClose', ease: 'move' },
+    { t: 0.10, cam: 'quarterClose' },
+    { t: 0.52, cam: 'behind', ease: 'move' },
+  ],
+  /* playback rate against scene time: slow into the swing, near-freeze at contact */
+  pace: [[-2.00, 0.95], [-0.95, 0.95], [-0.45, 0.50], [-0.12, 0.32], [-0.025, 0.07], [0.03, 0.07], [0.10, 0.34], [0.50, 0.70], [0.85, 1.0]],
+};
+const easeInOut = (k) => k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+function directedCamera(dir, tau) {
+  const keys = dir.camera;
+  if (tau <= keys[0].t) return CAMERAS[keys[0].cam];
+  let i = 0; while (i < keys.length - 1 && keys[i + 1].t <= tau) i++;
+  if (i === keys.length - 1) return CAMERAS[keys[i].cam];
+  const a = keys[i], b = keys[i + 1];
+  if (b.ease !== 'move') return CAMERAS[a.cam];
+  return lerpCam(CAMERAS[a.cam], CAMERAS[b.cam], easeInOut((tau - a.t) / (b.t - a.t)));
+}
+
+/* ---------- scenes: the existing straight drive data, shifted so the
+   figure has time to move (see DECISIONS.md) ---------- */
+const LEAD = 0.8;           // seconds added in front of every existing time
+const STRIKE = 1.2 + LEAD;  // scene time of the strike
+const G = 3;
+const shift = (pts) => pts.map((p) => ({ ...p, t: p.t + LEAD }));
+const FEED = [
+  { t: 0, x: 3.6, y: 0, z: 1.4, event: 'feed' },
+  { t: 0.75, x: 5.2, y: 6.9, z: 0, event: 'bounce' },
+  { t: 1.2, x: 5.6, y: 8.4, z: 0.55, event: 'strike' },
+];
+const ZONES = [
+  { id: 'front-target', surface: 'front', x: COURT.width - 1.1, z: COURT.serviceLine + 0.17, w: 1.1, h: 0.42 },
+  { id: 'floor-target', surface: 'floor', x: COURT.width - 0.7, y: BOX_BACK, w: 0.7, h: COURT.length - BOX_BACK },
+];
+const SCENES = [
+  { id: 'good', label: 'Good length', tone: 'good', duration: 4.4 + LEAD, ball: shift([...FEED,
+      { t: 1.75, x: 5.95, y: 0, z: 2.15, event: 'front', mark: 'good' },
+      { t: 2.55, x: 6.0, y: 7.7, z: 0, event: 'bounce', mark: 'good' },
+      { t: 2.95, x: 6.08, y: COURT.length, z: 0.35, event: 'back' },
+      { t: 3.3, x: 6.1, y: 9.3, z: 0, event: 'bounce' },
+      { t: 3.9, x: 6.12, y: 9.0, z: 0, event: 'roll' }]),
+    captions: [ // times relative to the strike
+      { t: -2.0, text: 'Watch the ball, racquet ready' },
+      { t: -1.45, text: 'Racquet up early', cue: 0, mark: 'racquet' },
+      { t: -0.62, text: 'Side-on, front foot to the wall', cue: 1, mark: 'foot' },
+      { t: -0.03, text: 'Contact level with the front foot', cue: 1, mark: 'contact' },
+      { t: 0.12, text: 'Aim just above the service line', cue: 2 },
+      { t: 0.62, text: 'Straight back to the T', cue: 4 },
+      { t: 1.35, text: 'Lands behind the box, dies in the corner', cue: 3, tone: 'good' }] },
+  { id: 'short', label: 'Too short', tone: 'bad', duration: 4.4 + LEAD, ball: shift([...FEED,
+      { t: 1.75, x: 5.9, y: 0, z: 1.75, event: 'front', mark: 'bad' },
+      { t: 2.35, x: 5.95, y: 5.6, z: 0, event: 'bounce', mark: 'bad' },
+      { t: 3.45, x: 6.0, y: 8.3, z: 0, event: 'bounce' },
+      { t: 4.0, x: 6.0, y: 8.8, z: 0, event: 'roll' }]),
+    captions: [{ t: -2.0, text: 'Same swing, aimed too low' }, { t: 0.55, text: 'Hits the wall near the service line' },
+      { t: 1.15, text: 'Lands short and sits up mid-court', tone: 'bad' }] },
+  { id: 'loose', label: 'Off the wall', tone: 'bad', duration: 4.4 + LEAD, ball: shift([...FEED,
+      { t: 1.75, x: 5.2, y: 0, z: 2.1, event: 'front' },
+      { t: 2.55, x: 4.5, y: 7.7, z: 0, event: 'bounce', mark: 'bad' },
+      { t: 2.95, x: 4.25, y: COURT.length, z: 0.35, event: 'back' },
+      { t: 3.3, x: 4.2, y: 9.3, z: 0, event: 'bounce' },
+      { t: 3.9, x: 4.15, y: 9.0, z: 0, event: 'roll' }]),
+    captions: [{ t: -2.0, text: 'Watch where this one lands' }, { t: 0.55, text: 'Angles off the wall' },
+      { t: 1.35, text: 'Deep, but in the middle: easy to volley from the T', tone: 'bad' }] },
+  { id: 'long', label: 'Too hard', tone: 'bad', duration: 4.6 + LEAD, ball: shift([...FEED,
+      { t: 1.65, x: 5.95, y: 0, z: 2.9, event: 'front' },
+      { t: 2.3, x: 6.0, y: 8.9, z: 0, event: 'bounce' },
+      { t: 2.5, x: 6.05, y: COURT.length, z: 1.1, event: 'back', mark: 'bad' },
+      { t: 3.4, x: 6.0, y: 6.9, z: 0, event: 'bounce', mark: 'bad' },
+      { t: 4.0, x: 5.95, y: 6.3, z: 0, event: 'roll' }]),
+    captions: [{ t: -2.0, text: 'Hit high and hard' }, { t: 1.3, text: 'Slams the back wall' },
+      { t: 2.2, text: 'Pops back out for an easy ball', tone: 'bad' }] },
+];
+const ANCHOR = { x: 5.6, y: 8.4 }; // floor point under the contact
+
+if (typeof module !== 'undefined') module.exports = { COURT, BOX_BACK, V, BODY, FOREHAND_DRIVE, sampleTrack, sampleArc, sampleLinear, ballAt, ik2, footAt,
+  solveFigure, placeFigure, CAMERAS, makeProjector, DIRECTOR, directedCamera, SCENES, ANCHOR, STRIKE, LEAD, G, ZONES };
+</script>
+
+<script>
+/* =====================================================================
+   RENDERER: canvas 2D. Reads only what the core returns.
+   ===================================================================== */
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const canvas = $('c'), ctx = canvas.getContext('2d');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const qs = new URLSearchParams(location.search);
+  const state = { scene: 0, camMode: qs.get('cam') || 'auto', t: 0, playing: !reduced, speed: 1, skeleton: false, fade: 0, W: 358, H: 400 };
+  let colors = {};
+  const readColors = () => {
+    const cs = getComputedStyle(document.documentElement);
+    for (const k of ['floor', 'floor-edge', 'wall', 'wall-side', 'court-line', 'ball', 'ball-edge', 'good', 'bad', 'target', 'target-edge',
+      'figure', 'figure-far', 'figure-edge', 'racquet', 'accent', 'stage', 'shadow', 'ink', 'surface']) colors[k] = cs.getPropertyValue('--' + k).trim();
+  };
+  if (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.dataset.theme = 'dark';
+  if (qs.get('theme')) document.documentElement.dataset.theme = qs.get('theme');
+  readColors();
+
+  function resize() {
+    const r = canvas.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 3);
+    state.W = r.width; state.H = r.height;
+    canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  addEventListener('resize', () => { resize(); draw(); });
+
+  /* ---------- drawing helpers ---------- */
+  let P; // current projector
+  const pj = (p) => P.project(p);
+  function poly(pts, fill, stroke, lw) {
+    ctx.beginPath();
+    pts.forEach((p, i) => { const q = pj(p); i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y); });
+    ctx.closePath();
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw || 1; ctx.stroke(); }
+  }
+  /** A court line with real width, drawn as a quad on its surface. n is the in-surface direction of the width. */
+  function band(a, b, n, width, color) {
+    const o = V.mul(n, width / 2);
+    poly([V.sub(a, o), V.sub(b, o), V.add(b, o), V.add(a, o)], color);
+  }
+  function line3(a, b, color, lw, dash) {
+    const A = pj(a), B = pj(b);
+    ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y);
+    ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.setLineDash(dash || []); ctx.lineCap = 'round'; ctx.stroke(); ctx.setLineDash([]);
+  }
+  /** Tapered capsule between two projected points with pixel radii. */
+  function capsule(a, ra, b, rb) {
+    const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
+    ctx.beginPath();
+    if (d < 1e-3 || d <= Math.abs(ra - rb)) { const big = ra > rb ? a : b; ctx.arc(big.x, big.y, Math.max(ra, rb), 0, 7); return; }
+    const ang = Math.atan2(dy, dx), off = Math.acos((ra - rb) / d);
+    ctx.arc(a.x, a.y, ra, ang + off, ang - off + Math.PI * 2);
+    ctx.arc(b.x, b.y, rb, ang - off, ang + off);
+    ctx.closePath();
+  }
+
+  /* ---------- court ---------- */
+  function drawCourt(camPos) {
+    const C = COURT, W = C.width, L = C.length, red = colors['court-line'], lw = 0.05;
+    const X = [1, 0, 0], Y = [0, 1, 0], Z = [0, 0, 1];
+    const fromTop = (P.cam.up || [0, 0, 1])[2] === 0;
+    // floor
+    poly([[0, 0, 0], [W, 0, 0], [W, L, 0], [0, L, 0]], colors.floor);
+    // boards hint: a few faint lines along the court
+    ctx.globalAlpha = 0.5;
+    for (let i = 1; i < 8; i++) line3([W * i / 8, 0, 0], [W * i / 8, L, 0], colors['floor-edge'], 0.6);
+    ctx.globalAlpha = 1;
+    if (!fromTop) {
+      // front wall
+      if (camPos[1] > 0) {
+        poly([[0, 0, 0], [W, 0, 0], [W, 0, C.frontOut + 0.5], [0, 0, C.frontOut + 0.5]], colors.wall);
+        poly([[0, 0, 0], [W, 0, 0], [W, 0, C.tin], [0, 0, C.tin]], red); // tin
+        band([0, 0, C.serviceLine], [W, 0, C.serviceLine], Z, lw, red);
+        band([0, 0, C.frontOut], [W, 0, C.frontOut], Z, lw, red);
+      }
+      // side walls: fill only the one the camera can see the inside of
+      const side = (x) => {
+        poly([[x, 0, 0], [x, L, 0], [x, L, C.backOut + 0.4], [x, 0, C.frontOut + 0.5]], colors['wall-side']);
+        const n = V.norm([0, -(C.backOut - C.frontOut), L]); // across the sloping out line
+        band([x, 0, C.frontOut], [x, L, C.backOut], n, lw, red);
+      };
+      if (camPos[0] > 0) side(0);
+      if (camPos[0] < W) side(W);
+      else { // looking in through the right wall: only its out line, faint
+        ctx.globalAlpha = 0.35; line3([W, 0, C.frontOut], [W, L, C.backOut], red, 1.2); ctx.globalAlpha = 1;
+      }
+      if (camPos[1] < L) poly([[0, L, 0], [W, L, 0], [W, L, C.backOut], [0, L, C.backOut]], colors['wall-side']);
+      // corner edges
+      ctx.globalAlpha = 0.6;
+      line3([0, 0, 0], [0, 0, C.frontOut + 0.5], colors['floor-edge'], 1);
+      line3([W, 0, 0], [W, 0, C.frontOut + 0.5], colors['floor-edge'], 1);
+      ctx.globalAlpha = 1;
+    }
+    // floor lines
+    const s = C.shortLine, b = C.boxSize;
+    band([0, s, 0], [W, s, 0], Y, lw, red);
+    band([W / 2, s, 0], [W / 2, L, 0], X, lw, red);
+    band([b, s, 0], [b, s + b, 0], X, lw, red); band([0, s + b, 0], [b, s + b, 0], Y, lw, red);
+    band([W - b, s, 0], [W - b, s + b, 0], X, lw, red); band([W - b, s + b, 0], [W, s + b, 0], Y, lw, red);
+    // floor outline
+    ctx.globalAlpha = 0.9;
+    line3([0, 0, 0], [W, 0, 0], colors['floor-edge'], 1.2); line3([W, 0, 0], [W, L, 0], colors['floor-edge'], 1.2);
+    line3([W, L, 0], [0, L, 0], colors['floor-edge'], 1.2); line3([0, L, 0], [0, 0, 0], colors['floor-edge'], 1.2);
+    ctx.globalAlpha = 1;
+  }
+
+  function drawZones(tau, scene) {
+    const fromTop = (P.cam.up || [0, 0, 1])[2] === 0;
+    for (const z of ZONES) {
+      // the wall target breathes while the "aim" caption shows; the floor target while the ball is coming back
+      const active = z.surface === 'front' ? (tau > 0.05 && tau < 0.7) : (tau > 0.6 && tau < 1.6);
+      const pulse = active ? 0.5 + 0.5 * Math.sin(tau * 9) : 0;
+      let pts;
+      if (z.surface === 'floor') pts = [[z.x, z.y, 0.004], [z.x + z.w, z.y, 0.004], [z.x + z.w, z.y + z.h, 0.004], [z.x, z.y + z.h, 0.004]];
+      else if (fromTop) pts = [[z.x, -0.22, 0], [z.x + z.w, -0.22, 0], [z.x + z.w, -0.04, 0], [z.x, -0.04, 0]];
+      else pts = [[z.x, 0, z.z], [z.x + z.w, 0, z.z], [z.x + z.w, 0, z.z + z.h], [z.x, 0, z.z + z.h]];
+      poly(pts, colors.target, colors['target-edge'], 1.5 + pulse * 1.5);
+    }
+  }
+
+  /* ---------- figure ---------- */
+  const R = { // limb radii in metres
+    thigh: [0.085, 0.062], shin: [0.058, 0.042], foot: [0.045, 0.036], upper: [0.052, 0.043], fore: [0.04, 0.032],
+    hand: 0.045, neck: [0.05, 0.05], torsoTop: 0.105, torsoBot: 0.10,
+  };
+  function figureParts(f) {
+    // each part: { depth, draw(ctx, color) }. Depth is camera distance of the midpoint.
+    const parts = [];
+    const cam = (p) => P.toCam(p)[2];
+    const torsoDepth = (cam(f.chest) + cam(f.pelvis)) / 2;
+    const limb = (a, b, r, tint) => {
+      const A = pj(a), Bp = pj(b);
+      parts.push({ depth: (A.depth + Bp.depth) / 2, tint, path: () => capsule(A, r[0] * A.scale, Bp, r[1] * Bp.scale) });
+    };
+    const farTint = (p) => cam(p) > torsoDepth + 0.04 ? 'far' : 'near';
+    for (const leg of [f.legL, f.legR]) {
+      const tint = farTint(leg.knee);
+      limb(leg.hip, leg.knee, R.thigh, tint); limb(leg.knee, leg.ankle, R.shin, tint); limb(leg.heel, leg.toe, R.foot, tint);
+    }
+    // torso: capsule from chest to pelvis plus a shoulder bar and a hip bar so it has width from every angle
+    limb(V.lerp(f.chest, f.pelvis, 0.08), f.pelvis, [R.torsoTop, R.torsoBot], 'near');
+    limb(f.shoulderL, f.shoulderR, [0.07, 0.07], 'near');
+    limb(f.hipL, f.hipR, [0.085, 0.085], 'near');
+    limb(f.chest, f.head, R.neck, 'near');
+    { const H = pj(f.head); parts.push({ depth: H.depth - 0.01, tint: 'near', path: () => { ctx.beginPath(); ctx.arc(H.x, H.y, BODY.headR * H.scale, 0, 7); } }); }
+    { const tint = farTint(f.armL.elbow);
+      limb(f.armL.shoulder, f.armL.elbow, R.upper, tint); limb(f.armL.elbow, f.armL.hand, R.fore, tint);
+      const h = pj(f.armL.hand); parts.push({ depth: h.depth, tint, path: () => { ctx.beginPath(); ctx.arc(h.x, h.y, R.hand * h.scale, 0, 7); } }); }
+    // hitting arm: accent colour
+    limb(f.armR.shoulder, f.armR.elbow, R.upper, 'hit'); limb(f.armR.elbow, f.armR.hand, R.fore, 'hit');
+    { const h = pj(f.armR.hand); parts.push({ depth: h.depth - 0.02, tint: 'hit', path: () => { ctx.beginPath(); ctx.arc(h.x, h.y, R.hand * h.scale, 0, 7); } }); }
+    // racquet
+    { const rq = f.racquet, c = pj(rq.head);
+      parts.push({ depth: c.depth, racquet: rq }); }
+    return parts.sort((a, b) => b.depth - a.depth);
+  }
+  function drawRacquet(rq) {
+    const B = BODY, w = V.norm(V.cross(rq.face, rq.dir));
+    const throat = V.add(rq.hand, V.mul(rq.dir, B.racquetReach - B.headLong));
+    const g0 = pj(rq.butt), g1 = pj(V.add(rq.hand, V.mul(rq.dir, 0.09))), th = pj(throat);
+    const ring = [];
+    for (let i = 0; i < 20; i++) { const a = i / 20 * Math.PI * 2;
+      ring.push(V.add(rq.head, V.add(V.mul(rq.dir, Math.cos(a) * B.headLong), V.mul(w, Math.sin(a) * B.headWide)))); }
+    const outline = (lw, color) => {
+      ctx.strokeStyle = color; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(g1.x, g1.y); ctx.lineTo(th.x, th.y); ctx.stroke();
+      ctx.beginPath(); ring.forEach((p, i) => { const q = pj(p); i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y); }); ctx.closePath(); ctx.stroke();
+    };
+    const s = th.scale;
+    outline(Math.max(2.2, 0.03 * s) + 2.5, colors['figure-edge']);
+    ctx.beginPath(); ring.forEach((p, i) => { const q = pj(p); i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y); }); ctx.closePath();
+    ctx.globalAlpha = 0.22; ctx.fillStyle = colors.accent; ctx.fill(); ctx.globalAlpha = 1;
+    outline(Math.max(2.2, 0.03 * s), colors.racquet);
+    // grip
+    ctx.strokeStyle = colors.racquet; ctx.lineWidth = Math.max(3, 0.045 * s); ctx.beginPath(); ctx.moveTo(g0.x, g0.y); ctx.lineTo(g1.x, g1.y); ctx.stroke();
+  }
+  function drawFigure(f) {
+    const parts = figureParts(f);
+    const col = { near: colors.figure, far: colors['figure-far'], hit: colors.accent };
+    for (const p of parts) {
+      if (p.racquet) { drawRacquet(p.racquet); continue; }
+      p.path(); ctx.lineWidth = 2.5; ctx.strokeStyle = colors['figure-edge']; ctx.lineJoin = 'round'; ctx.stroke();
+      p.path(); ctx.fillStyle = col[p.tint]; ctx.fill();
+    }
+    if (state.skeleton) {
+      const bones = [[f.pelvis, f.chest], [f.chest, f.head], [f.shoulderL, f.shoulderR], [f.hipL, f.hipR],
+        [f.legL.hip, f.legL.knee], [f.legL.knee, f.legL.ankle], [f.legR.hip, f.legR.knee], [f.legR.knee, f.legR.ankle],
+        [f.armL.shoulder, f.armL.elbow], [f.armL.elbow, f.armL.hand], [f.armR.shoulder, f.armR.elbow], [f.armR.elbow, f.armR.hand], [f.racquet.hand, f.racquet.head]];
+      for (const [a, b] of bones) line3(a, b, '#19c2ff', 1.5);
+      for (const [a, b] of bones) for (const p of [a, b]) { const q = pj(p); ctx.beginPath(); ctx.arc(q.x, q.y, 2.2, 0, 7); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#0a84b5'; ctx.lineWidth = 1; ctx.stroke(); }
+    }
+  }
+  function drawGroundShadow(f) {
+    // soft contact shadows: one blob under the pelvis, one under each foot
+    const blob = (p, rx, ry) => {
+      const pts = []; for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; pts.push([p[0] + Math.cos(a) * rx, p[1] + Math.sin(a) * ry, 0.003]); }
+      poly(pts, colors.shadow);
+    };
+    blob(f.pelvis, 0.34, 0.26);
+    for (const leg of [f.legL, f.legR]) { const m = V.lerp(leg.heel, leg.toe, 0.5); ctx.globalAlpha = Math.max(0, 1 - m[2] * 5); blob(m, 0.16, 0.12); ctx.globalAlpha = 1; }
+  }
+
+  /* ---------- ball ---------- */
+  function drawBallAndTrail(scene, t, front) {
+    const b = ballAt(scene.ball, t, G); if (!b) return;
+    if (!front) {
+      // path since the strike (dashed), so the shape of the shot stays on screen
+      if (t > STRIKE) {
+        ctx.beginPath(); let started = false;
+        for (let s = STRIKE; s <= t; s += 1 / 40) { const q = pj(ballAt(scene.ball, s, G)); started ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y); started = true; }
+        ctx.strokeStyle = colors[scene.tone]; ctx.globalAlpha = 0.55; ctx.lineWidth = 2; ctx.setLineDash([2, 6]); ctx.lineCap = 'round'; ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+      }
+      // floor shadow, and a wall shadow when the ball is near the right wall (shows tightness)
+      const sh = pj([b[0], b[1], 0.003]); const sr = Math.max(2, 0.07 * sh.scale);
+      ctx.beginPath(); ctx.ellipse(sh.x, sh.y, sr * 1.3, sr * 0.6, 0, 0, 7); ctx.fillStyle = colors.shadow; ctx.fill();
+      const gap = COURT.width - b[0];
+      if (gap < 1.2 && P.cam.pos[0] < COURT.width && (P.cam.up || [0, 0, 1])[2] !== 0) {
+        const ws = pj([COURT.width, b[1], b[2]]);
+        ctx.globalAlpha = Math.min(1, (1.2 - gap) / 0.8); ctx.beginPath(); ctx.arc(ws.x, ws.y, Math.max(2, 0.06 * ws.scale), 0, 7); ctx.fillStyle = colors.shadow; ctx.fill(); ctx.globalAlpha = 1;
+      }
+      return;
+    }
+    // comet trail
+    for (let i = 10; i >= 1; i--) {
+      const p = ballAt(scene.ball, t - i * 0.018, G); if (!p) continue;
+      const q = pj(p); ctx.globalAlpha = 0.5 * (1 - i / 11); ctx.beginPath(); ctx.arc(q.x, q.y, Math.max(2.2, 0.045 * q.scale) * (1 - i / 16), 0, 7); ctx.fillStyle = colors.ball; ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    const q = pj(b), r = Math.max(3.4, 0.05 * q.scale); // the ball is drawn larger than life (real radius 0.02 m)
+    ctx.beginPath(); ctx.arc(q.x, q.y, r, 0, 7); ctx.fillStyle = colors.ball; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = colors['ball-edge']; ctx.stroke();
+  }
+  function drawMarks(scene, t) {
+    for (const p of scene.ball) {
+      if (!p.mark || t < p.t) continue;
+      const age = t - p.t, q = pj([p.x, p.y, p.z + 0.004]);
+      const color = colors[p.mark === 'good' ? 'good' : 'bad'];
+      if (age < 0.5) { ctx.globalAlpha = 1 - age / 0.5; ctx.beginPath(); ctx.arc(q.x, q.y, 8 + age * 44, 0, 7); ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.stroke(); ctx.globalAlpha = 1; }
+      const pop = Math.min(1, age / 0.18), s = 9 * (1 + 0.35 * Math.sin(pop * Math.PI)) * pop;
+      ctx.beginPath(); ctx.arc(q.x, q.y, s, 0, 7); ctx.fillStyle = color; ctx.fill(); ctx.strokeStyle = colors.surface; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+      if (p.mark === 'good') { ctx.moveTo(q.x - s * .42, q.y); ctx.lineTo(q.x - s * .1, q.y + s * .32); ctx.lineTo(q.x + s * .45, q.y - s * .3); }
+      else { ctx.moveTo(q.x - s * .35, q.y - s * .35); ctx.lineTo(q.x + s * .35, q.y + s * .35); ctx.moveTo(q.x + s * .35, q.y - s * .35); ctx.lineTo(q.x - s * .35, q.y + s * .35); }
+      ctx.stroke();
+    }
+  }
+
+  /* ---------- teaching highlights ---------- */
+  function drawHighlights(scene, tau, f) {
+    let cur = null; for (const c of scene.captions) if (c.t <= tau) cur = c;
+    if (!cur || !cur.mark) return;
+    const age = tau - cur.t, a = Math.min(1, age / 0.08);
+    ctx.globalAlpha = a;
+    if (cur.mark === 'racquet') {
+      const q = pj(f.racquet.head); ctx.beginPath(); ctx.arc(q.x, q.y, 0.2 * q.scale + 3 * Math.sin(age * 10), 0, 7);
+      ctx.strokeStyle = colors.accent; ctx.lineWidth = 2; ctx.setLineDash([4, 5]); ctx.stroke(); ctx.setLineDash([]);
+    }
+    if (cur.mark === 'foot') { // arrow on the floor from the front foot toward the side wall
+      const toe = f.legL.toe, d = V.norm([f.legL.toe[0] - f.legL.heel[0], f.legL.toe[1] - f.legL.heel[1], 0]);
+      const a0 = [toe[0] + d[0] * 0.08, toe[1] + d[1] * 0.08, 0.004], a1 = V.add(a0, V.mul(d, 0.42)), n = [-d[1], d[0], 0];
+      line3(a0, a1, colors.accent, 3);
+      line3(a1, V.add(V.sub(a1, V.mul(d, 0.13)), V.mul(n, 0.09)), colors.accent, 3); line3(a1, V.sub(V.sub(a1, V.mul(d, 0.13)), V.mul(n, 0.09)), colors.accent, 3);
+    }
+    if (cur.mark === 'contact') { // line across the floor: front foot and ball level with each other
+      const y = f.legL.ankle[1], x0 = f.legL.ankle[0] - 0.25, x1 = ANCHOR.x + 0.3;
+      line3([x0, y, 0.004], [x1, y, 0.004], colors.accent, 2, [5, 5]);
+      line3([ANCHOR.x, ANCHOR.y, 0.004], [ANCHOR.x, ANCHOR.y, 0.5], colors.accent, 1.5, [3, 4]);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /* ---------- frame ---------- */
+  const camFor = (tau) => state.camMode === 'auto' ? directedCamera(DIRECTOR, tau)
+    : state.camMode === 'swing' ? (tau < -0.62 ? directedCamera(DIRECTOR, tau) : tau > 0.5 ? lerpCamTo(tau) : CAMERAS.quarterClose)
+    : CAMERAS[state.camMode];
+  // "Swing" mode keeps the side camera and eases back out to the wide framing for the recovery
+  function lerpCamTo(tau) { const k = Math.min(1, (tau - 0.5) / 0.6); const e = k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+    const a = CAMERAS.quarterClose, b = CAMERAS.quarterWide; return lerpCam(a, b, e); }
+
+  function draw() {
+    const scene = SCENES[state.scene], t = state.t, tau = t - STRIKE, { W, H } = state;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = colors.stage; ctx.fillRect(0, 0, W, H);
+    const cam = camFor(tau);
+    P = makeProjector(cam, W, H);
+    drawCourt(cam.pos);
+    drawZones(tau, scene);
+    const fig = placeFigure(solveFigure(FOREHAND_DRIVE, tau), ANCHOR, false);
+    drawGroundShadow(fig);
+    drawBallAndTrail(scene, t, false);
+    drawHighlights(scene, tau, fig);
+    // ball in front of or behind the figure, by camera depth
+    const b = ballAt(scene.ball, t, G);
+    const ballBehind = b && P.toCam(b)[2] > P.toCam(fig.pelvis)[2];
+    if (ballBehind) drawBallAndTrail(scene, t, true);
+    drawFigure(fig);
+    if (!ballBehind) drawBallAndTrail(scene, t, true);
+    drawMarks(scene, t);
+    if (state.fade > 0) { ctx.globalAlpha = state.fade; ctx.fillStyle = colors.stage; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+    // caption
+    let cur = null; for (const c of scene.captions) if (c.t <= tau) cur = c;
+    const text = cur ? cur.text : '';
+    if (capEl.dataset.text !== text) {
+      capEl.dataset.text = text; capEl.classList.add('swap');
+      setTimeout(() => { capEl.textContent = text; capEl.className = 'caption ' + (cur && cur.tone ? cur.tone : ''); }, reduced ? 0 : 140);
+    }
+    if (!scrubbing) scrub.value = Math.round(t / scene.duration * 1000);
+  }
+
+  /* ---------- clock ---------- */
+  let last = 0, scrubbing = false;
+  function tick(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (state.playing) {
+      const scene = SCENES[state.scene];
+      const pace = state.camMode === 'top' ? Math.max(0.6, sampleLinear(DIRECTOR.pace, state.t - STRIKE)) : sampleLinear(DIRECTOR.pace, state.t - STRIKE);
+      state.t += dt * pace * state.speed;
+      const tail = scene.duration - state.t;
+      state.fade = tail < 0.25 ? 1 - Math.max(0, tail) / 0.25 : Math.max(0, state.fade - dt * 4);
+      if (state.t >= scene.duration + 0.5) state.t = 0;
+    }
+    draw();
+    requestAnimationFrame(tick);
+  }
+
+  /* ---------- controls ---------- */
+  const capEl = $('caption'), scrub = $('scrub');
+  const variants = $('variants');
+  SCENES.forEach((s, i) => {
+    const b = document.createElement('button'); b.className = 'chip'; b.textContent = s.label; b.setAttribute('aria-pressed', i === 0);
+    b.onclick = () => { state.scene = i; state.t = 0; state.fade = 1; [...variants.children].forEach((c, j) => c.setAttribute('aria-pressed', j === i)); if (!reduced) setPlaying(true); };
+    variants.appendChild(b);
+  });
+  const cams = $('cams');
+  [['auto', 'Auto'], ['swing', 'Swing'], ['behind', 'Behind'], ['top', 'Above']].forEach(([id, label]) => {
+    const b = document.createElement('button'); b.textContent = label; b.setAttribute('aria-pressed', id === state.camMode);
+    b.onclick = () => { state.camMode = id; [...cams.children].forEach((c) => c.setAttribute('aria-pressed', c === b)); draw(); };
+    cams.appendChild(b);
+  });
+  function setPlaying(p) { state.playing = p; $('play').textContent = p ? '❚❚' : '▶'; $('play').setAttribute('aria-label', p ? 'Pause' : 'Play'); }
+  $('play').onclick = () => { if (!state.playing && state.t >= SCENES[state.scene].duration) state.t = 0; setPlaying(!state.playing); };
+  $('speed').onclick = () => { state.speed = state.speed === 1 ? 0.5 : 1; $('speed').textContent = state.speed === 1 ? '1×' : '½×'; };
+  scrub.oninput = () => { scrubbing = true; setPlaying(false); state.fade = 0; state.t = scrub.value / 1000 * SCENES[state.scene].duration; draw(); };
+  scrub.onchange = () => { scrubbing = false; };
+  $('theme').onclick = () => { const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark'; readColors(); draw(); };
+  $('skel').onclick = () => { state.skeleton = !state.skeleton; draw(); };
+
+  // test hooks: ?t=2.0 freezes on a scene time; window.__seek(t) for screenshots
+  window.__seek = (t, cam) => { setPlaying(false); state.fade = 0; state.t = t; if (cam) state.camMode = cam; draw(); };
+  window.__state = state;
+  resize();
+  if (qs.get('t')) { setPlaying(false); state.t = +qs.get('t'); }
+  else if (reduced) { setPlaying(false); state.t = STRIKE; state.camMode = qs.get('cam') || 'swing'; } // reduced motion: hold the contact pose
+  requestAnimationFrame((n) => { last = n; tick(n); });
+})();
+</script>
+</body>
+</html>
